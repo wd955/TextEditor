@@ -37,9 +37,7 @@ private:
 
         // context menu helpers
         TSharedPtr<SWidget> OnContextMenuOpening();
-        void ReplaceWord(const FMisspelling& Miss, const FString& NewWord);
-
-        void OnEditorScrolled(float NewScrollOffset);
+        void ReplaceWord(FMisspelling Miss, FString NewWord);
 
         void AddSelectionToDictionary();
         bool IsWordInCustomDictionary(const FString& Word) const;
