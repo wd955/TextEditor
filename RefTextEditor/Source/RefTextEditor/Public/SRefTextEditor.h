@@ -19,6 +19,7 @@ public:
 private:
         // UI
         TSharedPtr<class SMultiLineEditableTextBox> TextBox;
+        TSharedPtr<class SMultiLineEditableTextBox> PreviewBox;
         TSharedPtr<class STextBlock>               MisspellCounter;
 
         struct FMisspelling
@@ -37,6 +38,8 @@ private:
         // context menu helpers
         TSharedPtr<SWidget> OnContextMenuOpening();
         void ReplaceWord(const FMisspelling& Miss, const FString& NewWord);
+
+        void OnEditorScrolled(float NewScrollOffset);
 
         void AddSelectionToDictionary();
         bool IsWordInCustomDictionary(const FString& Word) const;
