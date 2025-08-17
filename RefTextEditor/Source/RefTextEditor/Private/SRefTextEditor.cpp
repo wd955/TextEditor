@@ -5,7 +5,6 @@
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Layout/SBorder.h"
-#include "Widgets/Layout/SSplitter.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Framework/Text/TextLayout.h"
@@ -15,11 +14,13 @@
 #include "RefTextEditorSettings.h"
 #include "Editor.h"
 
-void SRefTextEditor::Construct(const FArguments&)
+void SRefTextEditor::Construct(const FArguments& InArgs)
 {
-	ChildSlot
-		[
-			SNew(SVerticalBox)
+        OnTextChanged = InArgs._OnTextChanged;
+
+        ChildSlot
+                [
+                        SNew(SVerticalBox)
 
                                 // Small status row with misspell counter and options menu
                                 + SVerticalBox::Slot().AutoHeight().Padding(4)
@@ -55,7 +56,7 @@ void SRefTextEditor::Construct(const FArguments&)
                                         ]
                                 ]
 
-                                // Editor with live preview
+                                // Editor only (preview handled externally)
                                 + SVerticalBox::Slot().FillHeight(1.f).Padding(4)
                                 [
                                         SNew(SBorder)
@@ -72,31 +73,17 @@ void SRefTextEditor::Construct(const FArguments&)
                                                                 return FReply::Unhandled();
                                                         })
                                                 [
-                                                        SNew(SSplitter)
-                                                        + SSplitter::Slot().Value(0.5f)
-                                                        [
-                                                                SAssignNew(TextBox, SMultiLineEditableTextBox)
-                                                                        .IsReadOnly(false)
-                                                                        .AlwaysShowScrollbars(true)
-                                                                        .AutoWrapText(true)
-                                                                        .HintText(FText::FromString(TEXT("Type here…")))
-                                                                        .OnTextChanged_Lambda([this](const FText& NewText)
-                                                                                {
-                                                                                        if (PreviewBox.IsValid())
-                                                                                        {
-                                                                                                PreviewBox->SetText(NewText);
-                                                                                        }
-                                                                                        ScheduleSpellScan();
-                                                                                })
-                                                                        .OnContextMenuOpening(FOnContextMenuOpening::CreateSP(this, &SRefTextEditor::OnContextMenuOpening))
-                                                        ]
-                                                        + SSplitter::Slot().Value(0.5f)
-                                                        [
-                                                                SAssignNew(PreviewBox, SMultiLineEditableTextBox)
-                                                                        .IsReadOnly(true)
-                                                                        .AlwaysShowScrollbars(true)
-                                                                        .AutoWrapText(true)
-                                                        ]
+                                                        SAssignNew(TextBox, SMultiLineEditableTextBox)
+                                                                .IsReadOnly(false)
+                                                                .AlwaysShowScrollbars(true)
+                                                                .AutoWrapText(true)
+                                                                .HintText(FText::FromString(TEXT("Type here…")))
+                                                                .OnTextChanged_Lambda([this](const FText& NewText)
+                                                                        {
+                                                                                OnTextChanged.ExecuteIfBound(NewText);
+                                                                                ScheduleSpellScan();
+                                                                        })
+                                                                .OnContextMenuOpening(FOnContextMenuOpening::CreateSP(this, &SRefTextEditor::OnContextMenuOpening))
                                                 ]
                                 ]
                 ];
