@@ -9,6 +9,7 @@
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/Input/SMultiLineEditableTextBox.h"
+#include "Templates/SharedPointer.h"
 
 static const FName RefTextTabName("RefTextEditor");
 
@@ -72,7 +73,10 @@ private:
                    ];
         };
 
-        TSharedPtr<SMultiLineEditableTextBox> PreviewBox;
+        TSharedRef<SMultiLineEditableTextBox> PreviewBox = SNew(SMultiLineEditableTextBox)
+            .IsReadOnly(true)
+            .AlwaysShowScrollbars(true)
+            .AutoWrapText(true);
 
         TSharedRef<SSplitter> Split =
             SNew(SSplitter)
@@ -86,11 +90,11 @@ private:
             + SSplitter::Slot().Value(0.44f)
             [
                 SNew(SRefTextEditor)
-                .OnTextChanged_Lambda([&](const FText& NewText)
+                .OnTextChanged_Lambda([PreviewBoxWeak = TWeakPtr<SMultiLineEditableTextBox>(PreviewBox)](const FText& NewText)
                 {
-                    if (PreviewBox.IsValid())
+                    if (TSharedPtr<SMultiLineEditableTextBox> Pinned = PreviewBoxWeak.Pin())
                     {
-                        PreviewBox->SetText(NewText);
+                        Pinned->SetText(NewText);
                     }
                 })
             ]
@@ -104,10 +108,7 @@ private:
                 ]
                 + SVerticalBox::Slot().FillHeight(1.f)
                 [
-                    SAssignNew(PreviewBox, SMultiLineEditableTextBox)
-                    .IsReadOnly(true)
-                    .AlwaysShowScrollbars(true)
-                    .AutoWrapText(true)
+                    PreviewBox
                 ]
                 + SVerticalBox::Slot().AutoHeight()
                 [
