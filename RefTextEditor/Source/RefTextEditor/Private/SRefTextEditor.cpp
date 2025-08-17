@@ -55,26 +55,46 @@ void SRefTextEditor::Construct(const FArguments&)
                                         ]
                                 ]
 
-				// Editor
-				+ SVerticalBox::Slot().FillHeight(1.f).Padding(4)
-				[
-					SNew(SBorder)
-						.OnMouseButtonDown_Lambda([this](const FGeometry&, const FPointerEvent&)
-							{
-								if (TextBox.IsValid())
-								{
-									FSlateApplication::Get().SetKeyboardFocus(TextBox, EFocusCause::Mouse);
-								}
-								return FReply::Handled();
-							})
-						[
-                                                        SAssignNew(TextBox, SMultiLineEditableTextBox)
-                                                                .IsReadOnly(false)
-                                                                .AlwaysShowScrollbars(true)
-                                                                .AutoWrapText(true)
-                                                                .HintText(FText::FromString(TEXT("Type here…")))
-                                                                .OnTextChanged_Lambda([this](const FText&) { ScheduleSpellScan(); })
-                                                                .OnContextMenuOpening(FOnContextMenuOpening::CreateSP(this, &SRefTextEditor::OnContextMenuOpening))
+                                // Editor with live preview
+                                + SVerticalBox::Slot().FillHeight(1.f).Padding(4)
+                                [
+                                        SNew(SBorder)
+                                                .OnMouseButtonDown_Lambda([this](const FGeometry&, const FPointerEvent&)
+                                                        {
+                                                                if (TextBox.IsValid())
+                                                                {
+                                                                        FSlateApplication::Get().SetKeyboardFocus(TextBox, EFocusCause::Mouse);
+                                                                }
+                                                                return FReply::Handled();
+                                                        })
+                                                [
+                                                        SNew(SHorizontalBox)
+                                                        + SHorizontalBox::Slot().FillWidth(1.f)
+                                                        [
+                                                                SAssignNew(PreviewBox, SMultiLineEditableTextBox)
+                                                                        .IsReadOnly(true)
+                                                                        .AlwaysShowScrollbars(true)
+                                                                        .AutoWrapText(true)
+                                                                        .OnVScrollBarUserScrolled(this, &SRefTextEditor::OnEditorScrolled)
+                                                        ]
+                                                        + SHorizontalBox::Slot().FillWidth(1.f)
+                                                        [
+                                                                SAssignNew(TextBox, SMultiLineEditableTextBox)
+                                                                        .IsReadOnly(false)
+                                                                        .AlwaysShowScrollbars(true)
+                                                                        .AutoWrapText(true)
+                                                                        .HintText(FText::FromString(TEXT("Type here…")))
+                                                                        .OnTextChanged_Lambda([this](const FText& NewText)
+                                                                                {
+                                                                                        if (PreviewBox.IsValid())
+                                                                                        {
+                                                                                                PreviewBox->SetText(NewText);
+                                                                                        }
+                                                                                        ScheduleSpellScan();
+                                                                                })
+                                                                        .OnContextMenuOpening(FOnContextMenuOpening::CreateSP(this, &SRefTextEditor::OnContextMenuOpening))
+                                                                        .OnVScrollBarUserScrolled(this, &SRefTextEditor::OnEditorScrolled)
+                                                        ]
                                                 ]
                                 ]
                 ];
@@ -98,8 +118,20 @@ FString SRefTextEditor::GetText() const
 
 void SRefTextEditor::ScheduleSpellScan()
 {
-	// Simple immediate scan (no timers for now)
-	RunSpellScan();
+        // Simple immediate scan (no timers for now)
+        RunSpellScan();
+}
+
+void SRefTextEditor::OnEditorScrolled(float NewScrollOffset)
+{
+        if (TextBox.IsValid())
+        {
+                TextBox->SetScrollOffset(NewScrollOffset);
+        }
+        if (PreviewBox.IsValid())
+        {
+                PreviewBox->SetScrollOffset(NewScrollOffset);
+        }
 }
 
 bool SRefTextEditor::IsWordInCustomDictionary(const FString& Word) const
