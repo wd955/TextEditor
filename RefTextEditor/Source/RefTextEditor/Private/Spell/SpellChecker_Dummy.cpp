@@ -1,5 +1,7 @@
 #include "Spell/SpellChecker.h"
 
+#if !REFTEXT_WINDOWS_SPELL
+
 class FDummySpellChecker : public ISpellChecker
 {
 public:
@@ -11,3 +13,5 @@ TSharedPtr<ISpellChecker> CreateSpellChecker()
 {
     return MakeShared<FDummySpellChecker>();
 }
+
+#endif // !REFTEXT_WINDOWS_SPELL

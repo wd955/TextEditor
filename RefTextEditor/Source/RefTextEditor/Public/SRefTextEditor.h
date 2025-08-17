@@ -24,8 +24,6 @@ private:
 	void ScheduleSpellScan(); // simple immediate call
 	void RunSpellScan();
 
-	// Context menu
-	TSharedPtr<class SWidget> MakeContextMenu();
-	void AddSelectionToDictionary();
-	bool IsWordInCustomDictionary(const FString& Word) const;
+        void AddSelectionToDictionary();
+        bool IsWordInCustomDictionary(const FString& Word) const;
 };
