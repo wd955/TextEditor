@@ -3,24 +3,30 @@
 #include "Widgets/SCompoundWidget.h"
 #include "Input/Reply.h"
 #include "Framework/Text/TextLayout.h"
+#include "Widgets/Text/SlateEditableTextTypes.h"
 
 class SRefTextEditor : public SCompoundWidget
 {
 public:
-	SLATE_BEGIN_ARGS(SRefTextEditor) {}
-	SLATE_END_ARGS()
+        SLATE_BEGIN_ARGS(SRefTextEditor)
+                : _OnTextChanged()
+        {}
+                SLATE_EVENT(FOnTextChanged, OnTextChanged)
+        SLATE_END_ARGS()
 
-	void Construct(const FArguments&);
-	virtual bool SupportsKeyboardFocus() const override { return true; }
-	virtual FReply OnFocusReceived(const FGeometry& MyGeometry, const FFocusEvent& InFocusEvent) override;
+        void Construct(const FArguments& InArgs);
+        virtual bool SupportsKeyboardFocus() const override { return true; }
+        virtual FReply OnFocusReceived(const FGeometry& MyGeometry, const FFocusEvent& InFocusEvent) override;
 
-	FString GetText() const;
+        FString GetText() const;
 
 private:
         // UI
         TSharedPtr<class SMultiLineEditableTextBox> TextBox;
-        TSharedPtr<class SMultiLineEditableTextBox> PreviewBox;
         TSharedPtr<class STextBlock>               MisspellCounter;
+
+        // Delegate to notify external widgets about text changes
+        FOnTextChanged OnTextChanged;
 
         struct FMisspelling
         {

@@ -8,6 +8,7 @@
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
+#include "Widgets/Input/SMultiLineEditableTextBox.h"
 
 static const FName RefTextTabName("RefTextEditor");
 
@@ -71,6 +72,8 @@ private:
                    ];
         };
 
+        TSharedPtr<SMultiLineEditableTextBox> PreviewBox;
+
         TSharedRef<SSplitter> Split =
             SNew(SSplitter)
             .Orientation(Orient_Horizontal)
@@ -83,14 +86,28 @@ private:
             + SSplitter::Slot().Value(0.44f)
             [
                 SNew(SRefTextEditor)
+                .OnTextChanged_Lambda([&](const FText& NewText)
+                {
+                    if (PreviewBox.IsValid())
+                    {
+                        PreviewBox->SetText(NewText);
+                    }
+                })
             ]
-            // Right (with size bar placeholder)
+            // Right (with live preview and size bar)
             + SSplitter::Slot().Value(0.28f)
             [
                 SNew(SVerticalBox)
+                + SVerticalBox::Slot().AutoHeight().Padding(8.f)
+                [
+                    SNew(STextBlock).Text(FText::FromString(TEXT("Live Preview")))
+                ]
                 + SVerticalBox::Slot().FillHeight(1.f)
                 [
-                    MakePanel(TEXT("Right Panel — Live Preview"))
+                    SAssignNew(PreviewBox, SMultiLineEditableTextBox)
+                    .IsReadOnly(true)
+                    .AlwaysShowScrollbars(true)
+                    .AutoWrapText(true)
                 ]
                 + SVerticalBox::Slot().AutoHeight()
                 [
