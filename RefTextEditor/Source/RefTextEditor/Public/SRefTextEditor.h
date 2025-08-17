@@ -2,6 +2,7 @@
 
 #include "Widgets/SCompoundWidget.h"
 #include "Input/Reply.h"
+#include "Framework/Text/TextLayout.h"
 
 class SRefTextEditor : public SCompoundWidget
 {
@@ -16,13 +17,26 @@ public:
 	FString GetText() const;
 
 private:
-	// UI
-	TSharedPtr<class SMultiLineEditableTextBox> TextBox;
-	TSharedPtr<class STextBlock>               MisspellCounter;
+        // UI
+        TSharedPtr<class SMultiLineEditableTextBox> TextBox;
+        TSharedPtr<class STextBlock>               MisspellCounter;
 
-	// Spell check is always enabled now
-	void ScheduleSpellScan(); // simple immediate call
-	void RunSpellScan();
+        struct FMisspelling
+        {
+                FTextRange Range;
+                FString    Word;
+        };
+
+        // cached misspelled ranges from the last scan
+        TArray<FMisspelling> Misspellings;
+
+        // Spell check is always enabled now
+        void ScheduleSpellScan(); // simple immediate call
+        void RunSpellScan();
+
+        // context menu helpers
+        TSharedPtr<SWidget> OnContextMenuOpening();
+        void ReplaceWord(const FMisspelling& Miss, const FString& NewWord);
 
         void AddSelectionToDictionary();
         bool IsWordInCustomDictionary(const FString& Word) const;
