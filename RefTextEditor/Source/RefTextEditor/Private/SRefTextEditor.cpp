@@ -35,12 +35,12 @@ void SRefTextEditor::Construct(const FArguments&)
                                                         .OnClicked_Lambda([this]()
                                                         {
                                                                 FMenuBuilder Menu(true, nullptr);
-                                                                Menu.AddMenuEntry(
-                                                                        FUIAction(FExecuteAction::CreateSP(this, &SRefTextEditor::AddSelectionToDictionary)),
-                                                                        FText::FromString(TEXT("Add selection to dictionary")),
-                                                                        FText::FromString(TEXT("Treat the selected word as correct.")),
-                                                                        FSlateIcon()
-                                                                );
+                                                               Menu.AddMenuEntry(
+                                                                       FText::FromString(TEXT("Add selection to dictionary")),
+                                                                       FText::FromString(TEXT("Treat the selected word as correct.")),
+                                                                       FSlateIcon(),
+                                                                       FUIAction(FExecuteAction::CreateSP(this, &SRefTextEditor::AddSelectionToDictionary))
+                                                               );
                                                                 FSlateApplication::Get().PushMenu(
                                                                         AsShared(),
                                                                         FWidgetPath(),
@@ -259,22 +259,22 @@ TSharedPtr<SWidget> SRefTextEditor::OnContextMenuOpening()
                 SC->Suggest(Found->Word, Suggestions);
                 for (const FString& Sugg : Suggestions)
                 {
-                        Menu.AddMenuEntry(
-                                FUIAction(FExecuteAction::CreateSP(this, &SRefTextEditor::ReplaceWord, *Found, Sugg)),
-                                FText::FromString(Sugg),
-                                FText::FromString(TEXT("Replace with suggestion")),
-                                FSlateIcon()
-                        );
+                       Menu.AddMenuEntry(
+                               FText::FromString(Sugg),
+                               FText::FromString(TEXT("Replace with suggestion")),
+                               FSlateIcon(),
+                               FUIAction(FExecuteAction::CreateSP(this, &SRefTextEditor::ReplaceWord, *Found, Sugg))
+                       );
                 }
         }
 
         Menu.AddSeparator();
-        Menu.AddMenuEntry(
-                FUIAction(FExecuteAction::CreateSP(this, &SRefTextEditor::AddSelectionToDictionary)),
-                FText::FromString(TEXT("Add to dictionary")),
-                FText::FromString(TEXT("Treat this word as correct")),
-                FSlateIcon()
-        );
+       Menu.AddMenuEntry(
+               FText::FromString(TEXT("Add to dictionary")),
+               FText::FromString(TEXT("Treat this word as correct")),
+               FSlateIcon(),
+               FUIAction(FExecuteAction::CreateSP(this, &SRefTextEditor::AddSelectionToDictionary))
+       );
 
         return Menu.MakeWidget();
 }
