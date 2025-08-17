@@ -7,6 +7,9 @@
 #include "Widgets/Layout/SBorder.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
+#include "Framework/Text/TextLayout.h"
+#include "Framework/Text/SlateTextLayout.h"
+#include "Brushes/SlateColorBrush.h"
 
 #include "Spell/SpellChecker.h"
 #include "RefTextEditorSettings.h"
@@ -65,12 +68,13 @@ void SRefTextEditor::Construct(const FArguments&)
 								return FReply::Handled();
 							})
 						[
-							SAssignNew(TextBox, SMultiLineEditableTextBox)
-								.IsReadOnly(false)
-								.AlwaysShowScrollbars(true)
-								.AutoWrapText(true)
-								.HintText(FText::FromString(TEXT("Type here…")))
+                                                        SAssignNew(TextBox, SMultiLineEditableTextBox)
+                                                                .IsReadOnly(false)
+                                                                .AlwaysShowScrollbars(true)
+                                                                .AutoWrapText(true)
+                                                                .HintText(FText::FromString(TEXT("Type here…")))
                                                                 .OnTextChanged_Lambda([this](const FText&) { ScheduleSpellScan(); })
+                                                                .OnContextMenuOpening(FOnContextMenuOpening::CreateSP(this, &SRefTextEditor::OnContextMenuOpening))
                                                 ]
                                 ]
                 ];
@@ -116,12 +120,13 @@ bool SRefTextEditor::IsWordInCustomDictionary(const FString& Word) const
 
 void SRefTextEditor::RunSpellScan()
 {
-	int32 MissCount = 0;
-	const FString Text = GetText();
-	if (!Text.IsEmpty())
-	{
+        Misspellings.Reset();
+        int32 MissCount = 0;
+        const FString Text = GetText();
+        if (!Text.IsEmpty())
+        {
                 TSharedPtr<IRefSpellChecker> SC = CreateSpellChecker();
-		auto IsWord = [](TCHAR C) { return FChar::IsAlpha(C) || C == '\'' || C == '-'; };
+                auto IsWord = [](TCHAR C) { return FChar::IsAlpha(C) || C == '\'' || C == '-'; };
 
 		int32 i = 0, N = Text.Len();
 		while (i < N)
@@ -140,17 +145,42 @@ void SRefTextEditor::RunSpellScan()
 					continue; // treat as correct
 				}
 				// Then: platform spell checker (dummy or real)
-				if (SC.IsValid() && !SC->Check(Word))
-				{
-					++MissCount;
-				}
-			}
-		}
-	}
+                                if (SC.IsValid() && !SC->Check(Word))
+                                {
+                                        ++MissCount;
+                                        FMisspelling Miss;
+                                        Miss.Range = FTextRange(Start, End);
+                                        Miss.Word  = Word;
+                                        Misspellings.Add(Miss);
+                                }
+                        }
+                }
+        }
 
         if (MisspellCounter.IsValid())
         {
                 MisspellCounter->SetText(FText::FromString(FString::Printf(TEXT("Misspellings: %d"), MissCount)));
+        }
+
+        if (TextBox.IsValid())
+        {
+                // apply simple red underline highlight to each misspelled range
+                TArray<FTextLayout::FTextHighlight> Highlights;
+                for (const FMisspelling& M : Misspellings)
+                {
+                        FTextLayout::FTextHighlight H;
+                        H.Range = M.Range;
+                        H.Type  = TEXT("Misspell");
+                        Highlights.Add(H);
+                }
+
+                TextBox->GetTextLayout()->ClearHighlights();
+                TextBox->GetTextLayout()->AddHighlights(Highlights);
+
+                // setup style for highlight type
+                FTextBlockStyle Style = FTextBlockStyle();
+                Style.SetUnderlineBrush(FSlateColorBrush(FLinearColor::Red));
+                TextBox->GetTextLayout()->SetHighlightStyle(TEXT("Misspell"), Style);
         }
 }
 
@@ -193,6 +223,67 @@ void SRefTextEditor::AddSelectionToDictionary()
 		Settings->SaveConfig(); // persist to EditorPerProjectUserSettings
 	}
 
-	// Re-scan to update the counter
-	ScheduleSpellScan();
+        // Re-scan to update the counter
+        ScheduleSpellScan();
+}
+
+TSharedPtr<SWidget> SRefTextEditor::OnContextMenuOpening()
+{
+        if (!TextBox.IsValid()) return nullptr;
+
+        const FString Selected = TextBox->GetSelectedText().ToString();
+        if (Selected.IsEmpty()) return nullptr; // default menu
+
+        const FMisspelling* Found = nullptr;
+        for (const FMisspelling& M : Misspellings)
+        {
+                if (Selected.Equals(M.Word, ESearchCase::CaseSensitive))
+                {
+                        Found = &M;
+                        break;
+                }
+        }
+
+        if (!Found)
+        {
+                return nullptr; // let default menu appear
+        }
+
+        FMenuBuilder Menu(true, nullptr);
+
+        TSharedPtr<IRefSpellChecker> SC = CreateSpellChecker();
+        if (SC.IsValid())
+        {
+                TArray<FString> Suggestions;
+                SC->Suggest(Found->Word, Suggestions);
+                for (const FString& Sugg : Suggestions)
+                {
+                        Menu.AddMenuEntry(
+                                FText::FromString(Sugg),
+                                FText::FromString(TEXT("Replace with suggestion")),
+                                FSlateIcon(),
+                                FUIAction(FExecuteAction::CreateSP(this, &SRefTextEditor::ReplaceWord, *Found, Sugg))
+                        );
+                }
+        }
+
+        Menu.AddSeparator();
+        Menu.AddMenuEntry(
+                FText::FromString(TEXT("Add to dictionary")),
+                FText::FromString(TEXT("Treat this word as correct")),
+                FSlateIcon(),
+                FUIAction(FExecuteAction::CreateSP(this, &SRefTextEditor::AddSelectionToDictionary))
+        );
+
+        return Menu.MakeWidget();
+}
+
+void SRefTextEditor::ReplaceWord(const FMisspelling& Miss, const FString& NewWord)
+{
+        if (!TextBox.IsValid()) return;
+
+        FString Text = GetText();
+        FString NewText = Text.Left(Miss.Range.BeginIndex) + NewWord + Text.Mid(Miss.Range.EndIndex);
+        TextBox->SetText(FText::FromString(NewText));
+        ScheduleSpellScan();
 }
