@@ -14,7 +14,6 @@
 #include <windows.h>
 #include <wrl/client.h>
 #include <combaseapi.h>
-#include <initguid.h> // Define CLSID_SpellCheckerFactory without SpellCheck.lib
 #include <spellcheck.h>
 #include "Windows/HideWindowsPlatformTypes.h"
 
@@ -34,7 +33,7 @@ public:
         CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 
         ComPtr<ISpellCheckerFactory> Factory;
-        HRESULT hr = CoCreateInstance(CLSID_SpellCheckerFactory, nullptr, CLSCTX_INPROC_SERVER,
+        HRESULT hr = CoCreateInstance(__uuidof(SpellCheckerFactory), nullptr, CLSCTX_INPROC_SERVER,
                                       IID_PPV_ARGS(&Factory));
         if (SUCCEEDED(hr) && Factory)
         {
