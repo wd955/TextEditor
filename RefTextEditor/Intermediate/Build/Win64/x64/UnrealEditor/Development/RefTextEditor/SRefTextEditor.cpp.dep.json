@@ -1,0 +1,21 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "b:\\sdrive\\game dev\\myplugins\\texteditor\\plugins\\reftexteditor\\source\\reftexteditor\\private\\sreftexteditor.cpp",
+        "ProvidedModule": "",
+        "PCH": "b:\\sdrive\\game dev\\myplugins\\texteditor\\intermediate\\build\\win64\\x64\\texteditoreditor\\development\\unrealed\\sharedpch.unrealed.project.valapi.cpp20.h.pch",
+        "Includes": [
+            "b:\\sdrive\\game dev\\myplugins\\texteditor\\plugins\\reftexteditor\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\reftexteditor\\definitions.reftexteditor.h",
+            "b:\\sdrive\\game dev\\myplugins\\texteditor\\plugins\\reftexteditor\\source\\reftexteditor\\public\\sreftexteditor.h",
+            "a:\\program files\\epic games\\ue_5.4\\engine\\source\\runtime\\slate\\public\\widgets\\input\\smultilineeditabletextbox.h",
+            "a:\\program files\\epic games\\ue_5.4\\engine\\source\\runtime\\slate\\public\\widgets\\text\\smultilineeditabletext.h",
+            "a:\\program files\\epic games\\ue_5.4\\engine\\source\\runtime\\slate\\public\\framework\\text\\slatetextlayoutfactory.h",
+            "a:\\program files\\epic games\\ue_5.4\\engine\\source\\runtime\\slate\\public\\framework\\text\\slatetextlayout.h",
+            "b:\\sdrive\\game dev\\myplugins\\texteditor\\plugins\\reftexteditor\\source\\reftexteditor\\public\\spell\\spellchecker.h",
+            "b:\\sdrive\\game dev\\myplugins\\texteditor\\plugins\\reftexteditor\\source\\reftexteditor\\public\\reftexteditorsettings.h",
+            "b:\\sdrive\\game dev\\myplugins\\texteditor\\plugins\\reftexteditor\\intermediate\\build\\win64\\unrealeditor\\inc\\reftexteditor\\uht\\reftexteditorsettings.generated.h"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}

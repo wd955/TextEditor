@@ -1,0 +1,14 @@
+/NOLOGO
+/errorReport:prompt
+/MACHINE:x64
+/SUBSYSTEM:WINDOWS
+/DEF
+/NAME:"UnrealEditor-RefTextEditor.dll"
+/IGNORE:4221
+/NODEFAULTLIB
+"B:\SDrive\Game Dev\MyPlugins\TextEditor\Intermediate\Build\Win64\x64\TextEditorEditor\Development\UnrealEd\SharedPCH.UnrealEd.Project.ValApi.Cpp20.h.obj"
+"B:\SDrive\Game Dev\MyPlugins\TextEditor\Plugins\RefTextEditor\Intermediate\Build\Win64\x64\UnrealEditor\Development\RefTextEditor\RefTextEditorModule.cpp.obj"
+"B:\SDrive\Game Dev\MyPlugins\TextEditor\Plugins\RefTextEditor\Intermediate\Build\Win64\x64\UnrealEditor\Development\RefTextEditor\SRefTextEditor.cpp.obj"
+"B:\SDrive\Game Dev\MyPlugins\TextEditor\Plugins\RefTextEditor\Intermediate\Build\Win64\x64\UnrealEditor\Development\RefTextEditor\SpellChecker_Dummy.cpp.obj"
+"B:\SDrive\Game Dev\MyPlugins\TextEditor\Plugins\RefTextEditor\Intermediate\Build\Win64\x64\UnrealEditor\Development\RefTextEditor\Default.rc2.res"
+/OUT:"B:\SDrive\Game Dev\MyPlugins\TextEditor\Plugins\RefTextEditor\Intermediate\Build\Win64\x64\UnrealEditor\Development\RefTextEditor\UnrealEditor-RefTextEditor.lib"

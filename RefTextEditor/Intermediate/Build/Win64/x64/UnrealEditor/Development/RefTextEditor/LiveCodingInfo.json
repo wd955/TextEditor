@@ -1,0 +1,13 @@
+{
+	"RemapUnityFiles": 
+	{
+		"Module.RefTextEditor.cpp.obj": [
+			"RefTextEditor.init.gen.cpp.obj",
+			"RefTextEditorSettings.gen.cpp.obj",
+			"RefTextEditorModule.cpp.obj",
+			"RefTextEditorSettings.cpp.obj",
+			"SpellChecker_Dummy.cpp.obj",
+			"SRefTextEditor.cpp.obj"
+		]
+	}
+}

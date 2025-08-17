@@ -1,0 +1,14 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "b:\\sdrive\\game dev\\myplugins\\texteditor\\plugins\\reftexteditor\\source\\reftexteditor\\private\\reftexteditormodule.cpp",
+        "ProvidedModule": "",
+        "PCH": "b:\\sdrive\\game dev\\myplugins\\texteditor\\intermediate\\build\\win64\\x64\\texteditoreditor\\development\\unrealed\\sharedpch.unrealed.project.valapi.cpp20.h.pch",
+        "Includes": [
+            "b:\\sdrive\\game dev\\myplugins\\texteditor\\plugins\\reftexteditor\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\reftexteditor\\definitions.reftexteditor.h",
+            "b:\\sdrive\\game dev\\myplugins\\texteditor\\plugins\\reftexteditor\\source\\reftexteditor\\public\\sreftexteditor.h"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}
