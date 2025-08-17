@@ -2,8 +2,8 @@
 
 #include "Spell/SpellChecker.h"
 #include "Windows/AllowWindowsPlatformTypes.h"
-#include <wrl.h>
 #include <windows.h>
+#include <wrl/client.h>
 #include <combaseapi.h>
 #include <spellcheck.h>
 #include "Windows/HideWindowsPlatformTypes.h"
@@ -15,7 +15,7 @@ static BSTR MakeBSTR(const FString& In)
     return ::SysAllocStringLen((const OLECHAR*)*In, In.Len());
 }
 
-class FWinSpellChecker : public ISpellChecker
+class FWinSpellChecker : public IRefSpellChecker
 {
 public:
     FWinSpellChecker()
@@ -90,10 +90,10 @@ private:
         explicit operator bool() const { return Ptr != nullptr; }
     };
 
-    ComPtr<ISpellChecker> Checker;
+    ComPtr<::ISpellChecker> Checker;
 };
 
-TSharedPtr<ISpellChecker> CreateSpellChecker()
+TSharedPtr<IRefSpellChecker> CreateSpellChecker()
 {
     return MakeShared<FWinSpellChecker>();
 }
