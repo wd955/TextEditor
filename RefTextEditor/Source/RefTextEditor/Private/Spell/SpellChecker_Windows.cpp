@@ -1,6 +1,15 @@
 #if REFTEXT_WINDOWS_SPELL
 
 #include "Spell/SpellChecker.h"
+
+// The Windows spell checking API was introduced in Windows 8.  Unreal's
+// Windows headers target Windows 7 by default which causes the interfaces in
+// <spellcheck.h> to be hidden.  Bump the target version so the required COM
+// types such as ISpellCheckerFactory are declared.
+#if !defined(_WIN32_WINNT) || _WIN32_WINNT < 0x0602
+#define _WIN32_WINNT 0x0602 // Windows 8
+#endif
+
 #include "Windows/AllowWindowsPlatformTypes.h"
 #include <windows.h>
 #include <wrl/client.h>
