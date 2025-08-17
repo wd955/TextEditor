@@ -1,6 +1,7 @@
 #include "SRefTextEditor.h"
 
 #include "Widgets/Input/SMultiLineEditableTextBox.h"
+#include "Widgets/Input/SButton.h"
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Layout/SBorder.h"
@@ -17,12 +18,39 @@ void SRefTextEditor::Construct(const FArguments&)
 		[
 			SNew(SVerticalBox)
 
-				// Small status row (no toggle anymore)
-				+ SVerticalBox::Slot().AutoHeight().Padding(4)
-				[
-					SAssignNew(MisspellCounter, STextBlock)
-						.Text(FText::FromString(TEXT("Misspellings: 0")))
-				]
+                                // Small status row with misspell counter and options menu
+                                + SVerticalBox::Slot().AutoHeight().Padding(4)
+                                [
+                                        SNew(SHorizontalBox)
+                                        + SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+                                        [
+                                                SAssignNew(MisspellCounter, STextBlock)
+                                                        .Text(FText::FromString(TEXT("Misspellings: 0")))
+                                        ]
+                                        + SHorizontalBox::Slot().AutoWidth().Padding(8,0,0,0).VAlign(VAlign_Center)
+                                        [
+                                                SNew(SButton)
+                                                        .Text(FText::FromString(TEXT("⋯")))
+                                                        .OnClicked_Lambda([this]()
+                                                        {
+                                                                FMenuBuilder Menu(true, nullptr);
+                                                                Menu.AddMenuEntry(
+                                                                        FText::FromString(TEXT("Add selection to dictionary")),
+                                                                        FText::FromString(TEXT("Treat the selected word as correct.")),
+                                                                        FSlateIcon(),
+                                                                        FUIAction(FExecuteAction::CreateSP(this, &SRefTextEditor::AddSelectionToDictionary))
+                                                                );
+                                                                FSlateApplication::Get().PushMenu(
+                                                                        AsShared(),
+                                                                        FWidgetPath(),
+                                                                        Menu.MakeWidget(),
+                                                                        FSlateApplication::Get().GetCursorPos(),
+                                                                        FPopupTransitionEffect::ContextMenu
+                                                                );
+                                                                return FReply::Handled();
+                                                        })
+                                        ]
+                                ]
 
 				// Editor
 				+ SVerticalBox::Slot().FillHeight(1.f).Padding(4)
@@ -42,11 +70,10 @@ void SRefTextEditor::Construct(const FArguments&)
 								.AlwaysShowScrollbars(true)
 								.AutoWrapText(true)
 								.HintText(FText::FromString(TEXT("Type here…")))
-								.OnTextChanged_Lambda([this](const FText&) { ScheduleSpellScan(); })
-								.OnContextMenuOpening(this, &SRefTextEditor::MakeContextMenu)
-						]
-				]
-		];
+                                                                .OnTextChanged_Lambda([this](const FText&) { ScheduleSpellScan(); })
+                                                ]
+                                ]
+                ];
 
 	ScheduleSpellScan();
 }
@@ -121,26 +148,10 @@ void SRefTextEditor::RunSpellScan()
 		}
 	}
 
-	if (MisspellCounter.IsValid())
-	{
-		MisspellCounter->SetText(FText::FromString(FString::Printf(TEXT("Misspellings: %d"), MissCount)));
-	}
-}
-
-TSharedPtr<SWidget> SRefTextEditor::MakeContextMenu()
-{
-	FMenuBuilder Menu(true, nullptr);
-
-	// Default Edit entries (optional—SMultiLineEditableTextBox already adds native menu,
-	// but adding our own keeps it consistent)
-	Menu.AddMenuEntry(
-		FText::FromString(TEXT("Add selection to dictionary")),
-		FText::FromString(TEXT("Treat the selected word as correct from now on.")),
-		FSlateIcon(),
-		FUIAction(FExecuteAction::CreateSP(this, &SRefTextEditor::AddSelectionToDictionary))
-	);
-
-	return Menu.MakeWidget();
+        if (MisspellCounter.IsValid())
+        {
+                MisspellCounter->SetText(FText::FromString(FString::Printf(TEXT("Misspellings: %d"), MissCount)));
+        }
 }
 
 void SRefTextEditor::AddSelectionToDictionary()

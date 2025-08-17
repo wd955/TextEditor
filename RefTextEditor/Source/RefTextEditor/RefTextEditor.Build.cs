@@ -33,7 +33,7 @@ public class RefTextEditor : ModuleRules
         if (Target.Platform == UnrealTargetPlatform.Win64)
         {
             PublicDefinitions.Add("REFTEXT_WINDOWS_SPELL=1");
-            PublicSystemLibraries.AddRange(new[] { "Ole32.lib", "OleAut32.lib" });
+            PublicSystemLibraries.AddRange(new[] { "Ole32.lib", "OleAut32.lib", "SpellCheck.lib" });
         }
     }
 }
