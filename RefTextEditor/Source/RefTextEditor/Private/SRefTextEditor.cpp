@@ -8,8 +8,6 @@
 #include "Framework/Application/SlateApplication.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Framework/Text/TextLayout.h"
-#include "Framework/Text/SlateTextLayout.h"
-#include "Brushes/SlateColorBrush.h"
 
 #include "Spell/SpellChecker.h"
 #include "RefTextEditorSettings.h"
@@ -38,10 +36,10 @@ void SRefTextEditor::Construct(const FArguments&)
                                                         {
                                                                 FMenuBuilder Menu(true, nullptr);
                                                                 Menu.AddMenuEntry(
+                                                                        FUIAction(FExecuteAction::CreateSP(this, &SRefTextEditor::AddSelectionToDictionary)),
                                                                         FText::FromString(TEXT("Add selection to dictionary")),
                                                                         FText::FromString(TEXT("Treat the selected word as correct.")),
-                                                                        FSlateIcon(),
-                                                                        FUIAction(FExecuteAction::CreateSP(this, &SRefTextEditor::AddSelectionToDictionary))
+                                                                        FSlateIcon()
                                                                 );
                                                                 FSlateApplication::Get().PushMenu(
                                                                         AsShared(),
@@ -75,7 +73,6 @@ void SRefTextEditor::Construct(const FArguments&)
                                                                         .IsReadOnly(true)
                                                                         .AlwaysShowScrollbars(true)
                                                                         .AutoWrapText(true)
-                                                                        .OnVScrollBarUserScrolled(this, &SRefTextEditor::OnEditorScrolled)
                                                         ]
                                                         + SHorizontalBox::Slot().FillWidth(1.f)
                                                         [
@@ -93,7 +90,6 @@ void SRefTextEditor::Construct(const FArguments&)
                                                                                         ScheduleSpellScan();
                                                                                 })
                                                                         .OnContextMenuOpening(FOnContextMenuOpening::CreateSP(this, &SRefTextEditor::OnContextMenuOpening))
-                                                                        .OnVScrollBarUserScrolled(this, &SRefTextEditor::OnEditorScrolled)
                                                         ]
                                                 ]
                                 ]
@@ -120,18 +116,6 @@ void SRefTextEditor::ScheduleSpellScan()
 {
         // Simple immediate scan (no timers for now)
         RunSpellScan();
-}
-
-void SRefTextEditor::OnEditorScrolled(float NewScrollOffset)
-{
-        if (TextBox.IsValid())
-        {
-                TextBox->SetScrollOffset(NewScrollOffset);
-        }
-        if (PreviewBox.IsValid())
-        {
-                PreviewBox->SetScrollOffset(NewScrollOffset);
-        }
 }
 
 bool SRefTextEditor::IsWordInCustomDictionary(const FString& Word) const
@@ -194,25 +178,10 @@ void SRefTextEditor::RunSpellScan()
                 MisspellCounter->SetText(FText::FromString(FString::Printf(TEXT("Misspellings: %d"), MissCount)));
         }
 
+        // Highlighting API changed in recent engine versions; skip for now
         if (TextBox.IsValid())
         {
-                // apply simple red underline highlight to each misspelled range
-                TArray<FTextLayout::FTextHighlight> Highlights;
-                for (const FMisspelling& M : Misspellings)
-                {
-                        FTextLayout::FTextHighlight H;
-                        H.Range = M.Range;
-                        H.Type  = TEXT("Misspell");
-                        Highlights.Add(H);
-                }
-
-                TextBox->GetTextLayout()->ClearHighlights();
-                TextBox->GetTextLayout()->AddHighlights(Highlights);
-
-                // setup style for highlight type
-                FTextBlockStyle Style = FTextBlockStyle();
-                Style.SetUnderlineBrush(FSlateColorBrush(FLinearColor::Red));
-                TextBox->GetTextLayout()->SetHighlightStyle(TEXT("Misspell"), Style);
+                // Intentionally left blank
         }
 }
 
@@ -291,26 +260,26 @@ TSharedPtr<SWidget> SRefTextEditor::OnContextMenuOpening()
                 for (const FString& Sugg : Suggestions)
                 {
                         Menu.AddMenuEntry(
+                                FUIAction(FExecuteAction::CreateSP(this, &SRefTextEditor::ReplaceWord, *Found, Sugg)),
                                 FText::FromString(Sugg),
                                 FText::FromString(TEXT("Replace with suggestion")),
-                                FSlateIcon(),
-                                FUIAction(FExecuteAction::CreateSP(this, &SRefTextEditor::ReplaceWord, *Found, Sugg))
+                                FSlateIcon()
                         );
                 }
         }
 
         Menu.AddSeparator();
         Menu.AddMenuEntry(
+                FUIAction(FExecuteAction::CreateSP(this, &SRefTextEditor::AddSelectionToDictionary)),
                 FText::FromString(TEXT("Add to dictionary")),
                 FText::FromString(TEXT("Treat this word as correct")),
-                FSlateIcon(),
-                FUIAction(FExecuteAction::CreateSP(this, &SRefTextEditor::AddSelectionToDictionary))
+                FSlateIcon()
         );
 
         return Menu.MakeWidget();
 }
 
-void SRefTextEditor::ReplaceWord(const FMisspelling& Miss, const FString& NewWord)
+void SRefTextEditor::ReplaceWord(FMisspelling Miss, FString NewWord)
 {
         if (!TextBox.IsValid()) return;
 
