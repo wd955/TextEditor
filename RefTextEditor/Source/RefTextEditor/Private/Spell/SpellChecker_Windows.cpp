@@ -14,6 +14,7 @@
 #include <windows.h>
 #include <wrl/client.h>
 #include <combaseapi.h>
+#include <initguid.h> // Define CLSID_SpellCheckerFactory without SpellCheck.lib
 #include <spellcheck.h>
 #include "Windows/HideWindowsPlatformTypes.h"
 
