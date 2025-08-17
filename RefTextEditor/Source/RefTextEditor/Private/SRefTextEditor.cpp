@@ -120,7 +120,7 @@ void SRefTextEditor::RunSpellScan()
 	const FString Text = GetText();
 	if (!Text.IsEmpty())
 	{
-		TSharedPtr<ISpellChecker> SC = CreateSpellChecker();
+                TSharedPtr<IRefSpellChecker> SC = CreateSpellChecker();
 		auto IsWord = [](TCHAR C) { return FChar::IsAlpha(C) || C == '\'' || C == '-'; };
 
 		int32 i = 0, N = Text.Len();
