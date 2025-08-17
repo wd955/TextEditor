@@ -5,9 +5,11 @@
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Layout/SBorder.h"
+#include "Widgets/Layout/SSplitter.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Framework/Text/TextLayout.h"
+#include "InputCoreTypes.h"
 
 #include "Spell/SpellChecker.h"
 #include "RefTextEditorSettings.h"
@@ -57,24 +59,21 @@ void SRefTextEditor::Construct(const FArguments&)
                                 + SVerticalBox::Slot().FillHeight(1.f).Padding(4)
                                 [
                                         SNew(SBorder)
-                                                .OnMouseButtonDown_Lambda([this](const FGeometry&, const FPointerEvent&)
+                                                .OnMouseButtonDown_Lambda([this](const FGeometry&, const FPointerEvent& MouseEvent)
                                                         {
                                                                 if (TextBox.IsValid())
                                                                 {
                                                                         FSlateApplication::Get().SetKeyboardFocus(TextBox, EFocusCause::Mouse);
+                                                                        if (MouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+                                                                        {
+                                                                                return FReply::Handled();
+                                                                        }
                                                                 }
-                                                                return FReply::Handled();
+                                                                return FReply::Unhandled();
                                                         })
                                                 [
-                                                        SNew(SHorizontalBox)
-                                                        + SHorizontalBox::Slot().FillWidth(1.f)
-                                                        [
-                                                                SAssignNew(PreviewBox, SMultiLineEditableTextBox)
-                                                                        .IsReadOnly(true)
-                                                                        .AlwaysShowScrollbars(true)
-                                                                        .AutoWrapText(true)
-                                                        ]
-                                                        + SHorizontalBox::Slot().FillWidth(1.f)
+                                                        SNew(SSplitter)
+                                                        + SSplitter::Slot().Value(0.5f)
                                                         [
                                                                 SAssignNew(TextBox, SMultiLineEditableTextBox)
                                                                         .IsReadOnly(false)
@@ -90,6 +89,13 @@ void SRefTextEditor::Construct(const FArguments&)
                                                                                         ScheduleSpellScan();
                                                                                 })
                                                                         .OnContextMenuOpening(FOnContextMenuOpening::CreateSP(this, &SRefTextEditor::OnContextMenuOpening))
+                                                        ]
+                                                        + SSplitter::Slot().Value(0.5f)
+                                                        [
+                                                                SAssignNew(PreviewBox, SMultiLineEditableTextBox)
+                                                                        .IsReadOnly(true)
+                                                                        .AlwaysShowScrollbars(true)
+                                                                        .AutoWrapText(true)
                                                         ]
                                                 ]
                                 ]
