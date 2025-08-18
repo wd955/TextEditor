@@ -37,11 +37,11 @@ void SRefTextEditor::Construct(const FArguments& InArgs)
 														.Text(FText::FromString(TEXT("Misspellings: 0")))
 										]
 										+ SHorizontalBox::Slot().AutoWidth().Padding(8,0,0,0).VAlign(VAlign_Center)
-										[
-												SNew(SButton)
-														.Text(FText::FromString(TEXT("⋯")))
-														.OnClicked_Lambda([this]()
-														{
+                                                                                [
+                                                                                                SNew(SButton)
+                                                                                                                .Text(FText::FromString(TEXT("...")))
+                                                                                                                .OnClicked_Lambda([this]()
+                                                                                                                {
 																FMenuBuilder Menu(true, nullptr);
 															   Menu.AddMenuEntry(
 																	   FText::FromString(TEXT("Add selection to dictionary")),
