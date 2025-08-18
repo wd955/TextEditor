@@ -53,7 +53,7 @@ void FRefBakeService::EnsureMirrors(const FMasterRefRow& Ref)
         return;
     }
 
-    UScriptStruct* RowStruct = Ref.HardTable->GetRowStruct();
+    const UScriptStruct* RowStruct = Ref.HardTable->GetRowStruct();
     if (!RowStruct)
     {
         return;
@@ -77,7 +77,7 @@ void FRefBakeService::EnsureMirrors(const FMasterRefRow& Ref)
         FAssetRegistryModule::AssetCreated(SoftTable);
     }
 
-    SoftTable->RowStruct = RowStruct;
+    SoftTable->RowStruct = const_cast<UScriptStruct*>(RowStruct);
     SoftTable->EmptyTable();
 
     for (const TPair<FName, uint8*>& Pair : Ref.HardTable->GetRowMap())
@@ -143,7 +143,7 @@ void FRefBakeService::SyncTable(UDataTable* Table)
         return;
     }
 
-    Table->ForeachRow<FTableRowBase>(TEXT("RefBakeSync"), [&](FTableRowBase& Row)
+    Table->ForeachRow<FTableRowBase>(TEXT("RefBakeSync"), [&](const FName& /*RowName*/, FTableRowBase& Row)
     {
         // Stub: each row could be processed/baked here
     });
@@ -212,7 +212,7 @@ bool FRefBakeService::Validate(const FString& In, int32 LimitBytes, FString* Out
             if (Master)
             {
                 UDataTable* TargetTable = nullptr;
-                Master->ForeachRow<FMasterRefRow>(TEXT("ValidateLookup"), [&](const FMasterRefRow& Ref)
+                Master->ForeachRow<FMasterRefRow>(TEXT("ValidateLookup"), [&](const FName&, const FMasterRefRow& Ref)
                 {
                     if (!TargetTable && Ref.HardTable && Ref.HardTable->GetName() == TableName)
                     {
@@ -240,7 +240,7 @@ bool FRefBakeService::Validate(const FString& In, int32 LimitBytes, FString* Out
                 }
                 const uint8* RowPtr = *RowPtrPtr;
 
-                UScriptStruct* RowStruct = TargetTable->GetRowStruct();
+                const UScriptStruct* RowStruct = TargetTable->GetRowStruct();
                 if (!RowStruct)
                 {
                     if (OutError)
