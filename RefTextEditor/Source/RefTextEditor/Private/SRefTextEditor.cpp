@@ -100,16 +100,21 @@ void SRefTextEditor::Construct(const FArguments& InArgs)
 
 FReply SRefTextEditor::OnFocusReceived(const FGeometry& MyGeometry, const FFocusEvent& InFocusEvent)
 {
-	if (TextBox.IsValid())
-	{
-		return FReply::Handled().SetUserFocus(TextBox.ToSharedRef(), EFocusCause::SetDirectly);
-	}
-	return FReply::Unhandled();
+        if (TextBox.IsValid())
+        {
+                return FReply::Handled().SetUserFocus(TextBox.ToSharedRef(), EFocusCause::SetDirectly);
+        }
+        return FReply::Unhandled();
+}
+
+void SRefTextEditor::SetOnTextChanged(FOnTextChanged InHandler)
+{
+        OnTextChanged = InHandler;
 }
 
 FString SRefTextEditor::GetText() const
 {
-		return TextBox.IsValid() ? TextBox->GetText().ToString() : FString();
+                return TextBox.IsValid() ? TextBox->GetText().ToString() : FString();
 }
 
 FString SRefTextEditor::Serialize() const

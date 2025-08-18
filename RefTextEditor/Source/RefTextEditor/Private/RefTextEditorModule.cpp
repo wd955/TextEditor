@@ -99,82 +99,21 @@ private:
     TSharedRef<SScrollBar> HScrollBar = SNew(SScrollBar).Orientation(Orient_Horizontal);
     TSharedRef<SScrollBar> VScrollBar = SNew(SScrollBar).Orientation(Orient_Vertical);
 
-    TSharedPtr<SRefTextPreview> Preview;
-    TSharedPtr<SRefMasterTablePreview> MasterPreview;
-    TSharedPtr<STextBlock> SizeText;
-    TWeakPtr<SRefTextEditor> EditorWeak;
-
     TSharedRef<SRefTextEditor> Editor = SNew(SRefTextEditor)
-        .ExternalHScrollBar(HScrollBar)
-        .ExternalVScrollBar(VScrollBar)
-        .OnTextChanged_Lambda([
-            &Preview,
-            &MasterPreview,
-            &SizeText,
-            &EditorWeak](const FText& NewText)
-        {
-            const FString Baked = BakeService::BakeText(NewText.ToString());
-            if (Preview.IsValid())
-            {
-                Preview->SetText(Baked);
-            }
-            if (MasterPreview.IsValid())
-            {
-                MasterPreview->SetText(NewText.ToString());
-            }
-            if (SizeText.IsValid())
-            {
-                const int32 Bytes = BakeService::MeasureBytesUtf8(Baked);
-
-                int32 Limit = 0;
-                int32 Warn = 0;
-                EOverflowPolicy Policy = EOverflowPolicy::ConvertToAssets;
-                if (const URefTextEditorSettings* Settings = URefTextEditorSettings::Get())
-                {
-                    Limit = Settings->ByteLimitPerCell;
-                    Warn = Settings->WarnThreshold;
-                    Policy = Settings->OverflowPolicy;
-                }
-                if (Limit <= 0)
-                {
-                    Limit = 64 * 1024;
-                }
-                if (Warn <= 0)
-                {
-                    Warn = Limit * 3 / 4;
-                }
-
-                FString Error;
-                const bool bValid = BakeService::Validate(Baked, Limit, &Error);
-                FLinearColor Color = FLinearColor::White;
-                if (!bValid || Bytes > Limit)
-                {
-                    Color = FLinearColor::Red;
-                    if (Policy == EOverflowPolicy::ConvertToAssets)
-                    {
-                        if (TSharedPtr<SRefTextEditor> Pinned = EditorWeak.Pin())
-                        {
-                            BakeService::ConvertEntryToAssets(Pinned->GetText());
-                        }
-                    }
-                }
-                else if (Bytes > Warn)
-                {
-                    Color = FLinearColor::Yellow;
-                }
-                SizeText->SetColorAndOpacity(Color);
-                SizeText->SetText(FText::FromString(FString::Printf(TEXT("Size: %.1f KB / %.1f KB"), Bytes / 1024.f, Limit / 1024.f)));
-            }
-        });
-
-    EditorWeak = Editor;
-
-    SAssignNew(Preview, SRefTextPreview)
         .ExternalHScrollBar(HScrollBar)
         .ExternalVScrollBar(VScrollBar);
 
-    SAssignNew(MasterPreview, SRefMasterTablePreview)
-        .OnRowSelected_Lambda([EditorWeak = TWeakPtr<SRefTextEditor>(Editor)](int32)
+    TWeakPtr<SRefTextEditor> EditorWeak = Editor;
+
+    TSharedRef<SRefTextPreview> Preview = SNew(SRefTextPreview)
+        .ExternalHScrollBar(HScrollBar)
+        .ExternalVScrollBar(VScrollBar);
+
+    TSharedRef<STextBlock> SizeText = SNew(STextBlock)
+        .Text(NSLOCTEXT("RefText", "SizeBar", "Size: 0 KB / 64 KB"));
+
+    TSharedRef<SRefMasterTablePreview> MasterPreview = SNew(SRefMasterTablePreview)
+        .OnRowSelected_Lambda([EditorWeak](int32)
         {
             if (TSharedPtr<SRefTextEditor> PinnedEditor = EditorWeak.Pin())
             {
@@ -182,13 +121,62 @@ private:
             }
         });
 
+    Editor->SetOnTextChanged(FOnTextChanged::CreateLambda(
+        [Preview, MasterPreview, SizeText, EditorWeak](const FText& NewText)
+        {
+            const FString Baked = BakeService::BakeText(NewText.ToString());
+            Preview->SetText(Baked);
+            MasterPreview->SetText(NewText.ToString());
+
+            const int32 Bytes = BakeService::MeasureBytesUtf8(Baked);
+
+            int32 Limit = 0;
+            int32 Warn = 0;
+            EOverflowPolicy Policy = EOverflowPolicy::ConvertToAssets;
+            if (const URefTextEditorSettings* Settings = URefTextEditorSettings::Get())
+            {
+                Limit = Settings->ByteLimitPerCell;
+                Warn = Settings->WarnThreshold;
+                Policy = Settings->OverflowPolicy;
+            }
+            if (Limit <= 0)
+            {
+                Limit = 64 * 1024;
+            }
+            if (Warn <= 0)
+            {
+                Warn = Limit * 3 / 4;
+            }
+
+            FString Error;
+            const bool bValid = BakeService::Validate(Baked, Limit, &Error);
+            FLinearColor Color = FLinearColor::White;
+            if (!bValid || Bytes > Limit)
+            {
+                Color = FLinearColor::Red;
+                if (Policy == EOverflowPolicy::ConvertToAssets)
+                {
+                    if (TSharedPtr<SRefTextEditor> Pinned = EditorWeak.Pin())
+                    {
+                        BakeService::ConvertEntryToAssets(Pinned->GetText());
+                    }
+                }
+            }
+            else if (Bytes > Warn)
+            {
+                Color = FLinearColor::Yellow;
+            }
+            SizeText->SetColorAndOpacity(Color);
+            SizeText->SetText(FText::FromString(FString::Printf(TEXT("Size: %.1f KB / %.1f KB"), Bytes / 1024.f, Limit / 1024.f)));
+        }));
+
         TSharedRef<SSplitter> Split =
             SNew(SSplitter)
             .Orientation(Orient_Horizontal)
             // Left
             + SSplitter::Slot().Value(0.28f)
             [
-                MasterPreview.ToSharedRef()
+                MasterPreview
             ]
             // Middle
             + SSplitter::Slot().Value(0.44f)
@@ -205,7 +193,7 @@ private:
                 ]
                 + SVerticalBox::Slot().FillHeight(1.f)
                 [
-                    Preview.ToSharedRef()
+                    Preview
                 ]
                 + SVerticalBox::Slot().AutoHeight()
                 [
@@ -215,14 +203,13 @@ private:
                         SNew(SHorizontalBox)
                         + SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)
                         [
-                            SAssignNew(SizeText, STextBlock)
-                                .Text(NSLOCTEXT("RefText", "SizeBar", "Size: 0 KB / 64 KB"))
+                            SizeText
                         ]
                         + SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(8.f,0.f)
                         [
                             SNew(SButton)
                                 .Text(FText::FromString(TEXT("Convert to Asset")))
-                                .OnClicked_Lambda([EditorWeak = TWeakPtr<SRefTextEditor>(Editor)]()
+                                .OnClicked_Lambda([EditorWeak]()
                                 {
                                     if (TSharedPtr<SRefTextEditor> PinnedEditor = EditorWeak.Pin())
                                     {

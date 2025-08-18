@@ -69,6 +69,9 @@ public:
         virtual bool SupportsKeyboardFocus() const override { return true; }
         virtual FReply OnFocusReceived(const FGeometry& MyGeometry, const FFocusEvent& InFocusEvent) override;
 
+        /** Set the delegate to notify on text changes after construction. */
+        void SetOnTextChanged(FOnTextChanged InHandler);
+
         FString GetText() const;
 
         /** Serialize the text and token metadata to a JSON string. */
