@@ -255,7 +255,7 @@ TArray<FString> SRefTextEditor::BuildTokenSuggestions() const
         const URefTextEditorSettings* Settings = URefTextEditorSettings::Get();
         if (!Settings) return Suggestions;
 
-        if (UDataTable* Master = Settings->MasterReferenceTable)
+        if (UDataTable* Master = Settings->MasterReferenceTable.LoadSynchronous())
         {
                 Master->ForeachRow<FMasterRefRow>(TEXT("TokenSuggestions"), [&Suggestions](const FMasterRefRow& Row)
                 {
