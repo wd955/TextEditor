@@ -1,6 +1,7 @@
 // RefTextEditorModule.cpp - Minimal editor tab with a 3-panel blank layout
 
 #include "SRefTextEditor.h"
+#include "SRefMasterTablePreview.h"
 #include "Modules/ModuleManager.h"
 #include "ToolMenus.h"
 #include "Widgets/Docking/SDockTab.h"
@@ -10,6 +11,7 @@
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/Input/SMultiLineEditableTextBox.h"
 #include "Templates/SharedPointer.h"
+#include "Framework/Application/SlateApplication.h"
 
 static const FName RefTextTabName("RefTextEditor");
 
@@ -64,19 +66,35 @@ private:
 
     TSharedRef<SDockTab> SpawnTab(const FSpawnTabArgs&)
     {
-        auto MakePanel = [](const TCHAR* Label)
-        {
-            return SNew(SBorder)
-                   .Padding(8.f)
-                   [
-                       SNew(STextBlock).Text(FText::FromString(Label))
-                   ];
-        };
-
         TSharedRef<SMultiLineEditableTextBox> PreviewBox = SNew(SMultiLineEditableTextBox)
             .IsReadOnly(true)
             .AlwaysShowScrollbars(true)
             .AutoWrapText(true);
+
+        TSharedPtr<SRefMasterTablePreview> MasterPreview;
+        TSharedRef<SRefTextEditor> Editor = SNew(SRefTextEditor)
+            .OnTextChanged_Lambda([
+                PreviewBoxWeak = TWeakPtr<SMultiLineEditableTextBox>(PreviewBox),
+                &MasterPreview](const FText& NewText)
+            {
+                if (TSharedPtr<SMultiLineEditableTextBox> Pinned = PreviewBoxWeak.Pin())
+                {
+                    Pinned->SetText(NewText);
+                }
+                if (MasterPreview.IsValid())
+                {
+                    MasterPreview->SetText(NewText.ToString());
+                }
+            });
+
+        SAssignNew(MasterPreview, SRefMasterTablePreview)
+            .OnRowSelected_Lambda([EditorWeak = TWeakPtr<SRefTextEditor>(Editor)](int32)
+            {
+                if (TSharedPtr<SRefTextEditor> PinnedEditor = EditorWeak.Pin())
+                {
+                    FSlateApplication::Get().SetKeyboardFocus(PinnedEditor);
+                }
+            });
 
         TSharedRef<SSplitter> Split =
             SNew(SSplitter)
@@ -84,19 +102,12 @@ private:
             // Left
             + SSplitter::Slot().Value(0.28f)
             [
-                MakePanel(TEXT("Left Panel — Master Table Preview"))
+                MasterPreview.ToSharedRef()
             ]
             // Middle
             + SSplitter::Slot().Value(0.44f)
             [
-                SNew(SRefTextEditor)
-                .OnTextChanged_Lambda([PreviewBoxWeak = TWeakPtr<SMultiLineEditableTextBox>(PreviewBox)](const FText& NewText)
-                {
-                    if (TSharedPtr<SMultiLineEditableTextBox> Pinned = PreviewBoxWeak.Pin())
-                    {
-                        Pinned->SetText(NewText);
-                    }
-                })
+                Editor
             ]
             // Right (with live preview and size bar)
             + SSplitter::Slot().Value(0.28f)
