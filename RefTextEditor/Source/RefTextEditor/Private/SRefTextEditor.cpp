@@ -9,11 +9,16 @@
 #include "Framework/Application/SlateApplication.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Framework/Text/TextLayout.h"
+#include "Framework/Text/SlateTextRun.h"
 #include "InputCoreTypes.h"
 
 #include "Spell/SpellChecker.h"
 #include "RefTextEditorSettings.h"
+#include "MasterReferenceTable.h"
+#include "Engine/DataTable.h"
+#include "UObject/UnrealType.h"
 #include "Editor.h"
+#include "Dom/JsonValue.h"
 
 void SRefTextEditor::Construct(const FArguments& InArgs)
 {
@@ -105,7 +110,121 @@ FReply SRefTextEditor::OnFocusReceived(const FGeometry& MyGeometry, const FFocus
 
 FString SRefTextEditor::GetText() const
 {
-	return TextBox.IsValid() ? TextBox->GetText().ToString() : FString();
+        return TextBox.IsValid() ? TextBox->GetText().ToString() : FString();
+}
+
+FString SRefTextEditor::Serialize() const
+{
+        TSharedRef<FJsonObject> Root = MakeShared<FJsonObject>();
+        const FString PlainText = GetText();
+        Root->SetStringField(TEXT("text"), PlainText);
+
+        TArray<TSharedPtr<FJsonValue>> TokenArray;
+        if (TextBox.IsValid())
+        {
+                if (TSharedPtr<FTextLayout> Layout = TextBox->GetTextLayout())
+                {
+                        const TArray<FTextLayout::FLineModel>& Lines = Layout->GetLineModels();
+                        for (const FTextLayout::FLineModel& Line : Lines)
+                        {
+                                for (const FTextLayout::FRunModel& Run : Line.Runs)
+                                {
+                                        const FRunInfo& Info = Run.GetRun()->GetRunInfo();
+                                        if (const FString* MetaJson = Info.MetaData.Find(TEXT("TokenMeta")))
+                                        {
+                                                TSharedRef<FJsonObject> TokenObj = MakeShared<FJsonObject>();
+                                                TokenObj->SetNumberField(TEXT("start"), Run.Range.BeginIndex);
+                                                TokenObj->SetNumberField(TEXT("end"), Run.Range.EndIndex);
+                                                TokenObj->SetStringField(TEXT("meta"), *MetaJson);
+                                                TokenArray.Add(MakeShared<FJsonValueObject>(TokenObj));
+                                        }
+                                }
+                        }
+                }
+        }
+
+        Root->SetArrayField(TEXT("tokens"), TokenArray);
+
+        FString Out;
+        TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&Out);
+        FJsonSerializer::Serialize(Root, Writer);
+        return Out;
+}
+
+void SRefTextEditor::Deserialize(const FString& InSerialized)
+{
+        TSharedPtr<FJsonObject> Root;
+        TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(InSerialized);
+        if (!FJsonSerializer::Deserialize(Reader, Root) || !Root.IsValid())
+        {
+                return;
+        }
+
+        FString PlainText;
+        Root->TryGetStringField(TEXT("text"), PlainText);
+        if (TextBox.IsValid())
+        {
+                TextBox->SetText(FText::FromString(PlainText));
+
+                if (TSharedPtr<FTextLayout> Layout = TextBox->GetTextLayout())
+                {
+                        const TArray<TSharedPtr<FJsonValue>>* Tokens = nullptr;
+                        if (Root->TryGetArrayField(TEXT("tokens"), Tokens))
+                        {
+                                for (const TSharedPtr<FJsonValue>& Val : *Tokens)
+                                {
+                                        TSharedPtr<FJsonObject> TokenObj = Val->AsObject();
+                                        if (!TokenObj.IsValid()) continue;
+                                        const int32 Start = TokenObj->GetIntegerField(TEXT("start"));
+                                        const int32 End   = TokenObj->GetIntegerField(TEXT("end"));
+                                        FString MetaJson;
+                                        TokenObj->TryGetStringField(TEXT("meta"), MetaJson);
+
+                                        FRunInfo Info(TEXT("token"));
+                                        Info.MetaData.Add(TEXT("TokenMeta"), MetaJson);
+                                        Layout->AddRun(
+                                                FTextRange(Start, End),
+                                                FSlateTextRun::Create(Info,
+                                                        FText::FromString(PlainText.Mid(Start, End - Start)),
+                                                        Layout->GetDefaultTextStyle())
+                                        );
+                                }
+                        }
+                }
+        }
+}
+
+void SRefTextEditor::InsertToken(const FTokenMeta& Meta)
+{
+        if (!TextBox.IsValid()) return;
+
+        const FString Display = Meta.ToDisplayString();
+        TextBox->InsertTextAtCursor(Display);
+
+        if (TSharedPtr<FTextLayout> Layout = TextBox->GetTextLayout())
+        {
+                const FString Text = TextBox->GetText().ToString();
+                const int32 Start = Text.Find(Display, ESearchCase::CaseSensitive, ESearchDir::FromEnd);
+                const int32 End   = Start + Display.Len();
+
+                FRunInfo Info(TEXT("token"));
+                Info.MetaData.Add(TEXT("TokenMeta"), Meta.ToJson());
+
+                Layout->AddRun(
+                        FTextRange(Start, End),
+                        FSlateTextRun::Create(Info, FText::FromString(Display), Layout->GetDefaultTextStyle()));
+        }
+}
+
+FReply SRefTextEditor::OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent)
+{
+        if (InKeyEvent.IsControlDown() && InKeyEvent.GetKey() == EKeys::SpaceBar)
+        {
+                CachedSuggestions = BuildTokenSuggestions();
+                ShowSuggestions(CachedSuggestions);
+                return FReply::Handled();
+        }
+        return SCompoundWidget::OnKeyDown(MyGeometry, InKeyEvent);
 }
 
 void SRefTextEditor::ScheduleSpellScan()
@@ -128,6 +247,67 @@ bool SRefTextEditor::IsWordInCustomDictionary(const FString& Word) const
 		}
 	}
 	return false;
+}
+
+TArray<FString> SRefTextEditor::BuildTokenSuggestions() const
+{
+        TArray<FString> Suggestions;
+        const URefTextEditorSettings* Settings = URefTextEditorSettings::Get();
+        if (!Settings) return Suggestions;
+
+        if (UDataTable* Master = Settings->MasterReferenceTable)
+        {
+                Master->ForeachRow<FMasterRefRow>(TEXT("TokenSuggestions"), [&Suggestions](const FMasterRefRow& Row)
+                {
+                        if (!Row.HardTable) return;
+                        const FString TableName = Row.HardTable->GetName();
+                        for (const auto& Pair : Row.HardTable->GetRowMap())
+                        {
+                                const FString RowName = Pair.Key.ToString();
+                                UScriptStruct* Struct = Row.HardTable->GetRowStruct();
+                                for (TFieldIterator<FProperty> It(Struct); It; ++It)
+                                {
+                                        const FString Column = It->GetName();
+                                        Suggestions.Add(FString::Printf(TEXT("%s.%s.%s"), *TableName, *RowName, *Column));
+                                }
+                        }
+                });
+        }
+
+        return Suggestions;
+}
+
+void SRefTextEditor::ShowSuggestions(const TArray<FString>& InSuggestions)
+{
+        FMenuBuilder Menu(true, nullptr);
+        for (const FString& Token : InSuggestions)
+        {
+                Menu.AddMenuEntry(
+                        FText::FromString(Token),
+                        FText::GetEmpty(),
+                        FSlateIcon(),
+                        FUIAction(FExecuteAction::CreateSP(this, &SRefTextEditor::HandleSuggestionChosen, Token))
+                );
+        }
+
+        FSlateApplication::Get().PushMenu(
+                AsShared(),
+                FWidgetPath(),
+                Menu.MakeWidget(),
+                FSlateApplication::Get().GetCursorPos(),
+                FPopupTransitionEffect::ContextMenu
+        );
+}
+
+void SRefTextEditor::HandleSuggestionChosen(const FString& TokenString)
+{
+        FTokenMeta Meta;
+        TArray<FString> Parts;
+        TokenString.ParseIntoArray(Parts, TEXT("."));
+        if (Parts.Num() >= 1) Meta.Table = Parts[0];
+        if (Parts.Num() >= 2) Meta.Row   = Parts[1];
+        if (Parts.Num() >= 3) Meta.Column= Parts[2];
+        InsertToken(Meta);
 }
 
 void SRefTextEditor::RunSpellScan()
