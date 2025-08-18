@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "MasterReferenceTable.h"
 #include "Engine/DataTable.h"
-#include "Modules/ModularFeature.h"
+#include "Features/IModularFeatures.h"
 
 /**
  * Interface describing the bake/text syncing service used by the editor.
