@@ -2,6 +2,9 @@
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "AssetToolsModule.h"
 #include "Engine/DataTable.h"
+#include "RefTextEditorSettings.h"
+#include "MasterReferenceTable.h"
+#include "UObject/UnrealType.h"
 
 // Static feature name
 const FName IBakeService::FeatureName(TEXT("RefBakeService"));
@@ -133,15 +136,206 @@ void FRefBakeService::SyncTable(UDataTable* Table)
 
 bool FRefBakeService::Validate(const FString& In, int32 LimitBytes, FString* OutError) const
 {
-    const int32 Bytes = MeasureBytesUtf8(In);
-    if (LimitBytes > 0 && Bytes > LimitBytes)
+    const URefTextEditorSettings* Settings = URefTextEditorSettings::Get();
+    UDataTable* Master = Settings ? Settings->MasterReferenceTable : nullptr;
+
+    TSet<FString> Visiting;
+
+    TFunction<bool(const FString&)> ValidateImpl = [&](const FString& Text) -> bool
     {
-        if (OutError)
+        const int32 Bytes = MeasureBytesUtf8(Text);
+        if (LimitBytes > 0 && Bytes > LimitBytes)
         {
-            *OutError = FString::Printf(TEXT("Text exceeds byte limit (%d/%d)."), Bytes, LimitBytes);
+            if (OutError)
+            {
+                *OutError = FString::Printf(TEXT("Text exceeds byte limit (%d/%d)."), Bytes, LimitBytes);
+            }
+            return false;
         }
-        return false;
+
+        int32 Pos = 0;
+        while (Pos < Text.Len())
+        {
+            const int32 Start = Text.Find(TEXT("{{"), ESearchCase::CaseSensitive, ESearchDir::FromStart, Pos);
+            if (Start == INDEX_NONE)
+            {
+                break;
+            }
+            const int32 End = Text.Find(TEXT("}}"), ESearchCase::CaseSensitive, ESearchDir::FromStart, Start + 2);
+            if (End == INDEX_NONE)
+            {
+                break;
+            }
+
+            FString TokenString = Text.Mid(Start + 2, End - Start - 2).TrimStartAndEnd();
+            TArray<FString> Parts;
+            TokenString.ParseIntoArray(Parts, TEXT("."));
+            if (Parts.Num() != 3)
+            {
+                if (OutError)
+                {
+                    *OutError = FString::Printf(TEXT("Malformed token '%s'."), *TokenString);
+                }
+                return false;
+            }
+
+            const FString& TableName  = Parts[0];
+            const FString& RowName    = Parts[1];
+            const FString& ColumnName = Parts[2];
+            const FString TokenKey = FString::Printf(TEXT("%s.%s.%s"), *TableName, *RowName, *ColumnName);
+
+            if (Visiting.Contains(TokenKey))
+            {
+                if (OutError)
+                {
+                    *OutError = FString::Printf(TEXT("Cycle detected at '%s'."), *TokenKey);
+                }
+                return false;
+            }
+
+            FString CellText;
+            if (Master)
+            {
+                UDataTable* TargetTable = nullptr;
+                Master->ForeachRow<FMasterRefRow>(TEXT("ValidateLookup"), [&](const FMasterRefRow& Ref)
+                {
+                    if (!TargetTable && Ref.HardTable && Ref.HardTable->GetName() == TableName)
+                    {
+                        TargetTable = Ref.HardTable;
+                    }
+                });
+
+                if (!TargetTable)
+                {
+                    if (OutError)
+                    {
+                        *OutError = FString::Printf(TEXT("Missing table '%s'."), *TableName);
+                    }
+                    return false;
+                }
+
+                const uint8* const* RowPtrPtr = TargetTable->GetRowMap().Find(FName(*RowName));
+                if (!RowPtrPtr)
+                {
+                    if (OutError)
+                    {
+                        *OutError = FString::Printf(TEXT("Missing row '%s' in table '%s'."), *RowName, *TableName);
+                    }
+                    return false;
+                }
+                const uint8* RowPtr = *RowPtrPtr;
+
+                UScriptStruct* RowStruct = TargetTable->GetRowStruct();
+                if (!RowStruct)
+                {
+                    if (OutError)
+                    {
+                        *OutError = FString::Printf(TEXT("Invalid row struct for table '%s'."), *TableName);
+                    }
+                    return false;
+                }
+
+                FProperty* Prop = RowStruct->FindPropertyByName(FName(*ColumnName));
+                if (!Prop)
+                {
+                    if (OutError)
+                    {
+                        *OutError = FString::Printf(TEXT("Missing column '%s' in table '%s'."), *ColumnName, *TableName);
+                    }
+                    return false;
+                }
+
+                const void* ValuePtr = Prop->ContainerPtrToValuePtr<void>(RowPtr);
+                if (const FStrProperty* StrProp = CastField<FStrProperty>(Prop))
+                {
+                    CellText = StrProp->GetPropertyValue(ValuePtr);
+                }
+                else if (const FTextProperty* TextProp = CastField<FTextProperty>(Prop))
+                {
+                    CellText = TextProp->GetPropertyValue(ValuePtr).ToString();
+                }
+                else if (const FNameProperty* NameProp = CastField<FNameProperty>(Prop))
+                {
+                    CellText = NameProp->GetPropertyValue(ValuePtr).ToString();
+                }
+                else
+                {
+                    if (OutError)
+                    {
+                        *OutError = FString::Printf(TEXT("Unsupported column type for '%s'."), *TokenKey);
+                    }
+                    return false;
+                }
+
+                if (CellText.IsEmpty())
+                {
+                    if (OutError)
+                    {
+                        *OutError = FString::Printf(TEXT("Empty value for '%s'."), *TokenKey);
+                    }
+                    return false;
+                }
+            }
+
+            Visiting.Add(TokenKey);
+            if (!ValidateImpl(CellText))
+            {
+                return false;
+            }
+            Visiting.Remove(TokenKey);
+
+            Pos = End + 2;
+        }
+
+        return true;
+    };
+
+    return ValidateImpl(In);
+}
+
+static void RetargetToken(FString& Text, const FString& Table, const FString& OldVal, const FString& NewVal, bool bIsRow)
+{
+    int32 Pos = 0;
+    while (Pos < Text.Len())
+    {
+        int32 Start = Text.Find(TEXT("{{"), ESearchCase::CaseSensitive, ESearchDir::FromStart, Pos);
+        if (Start == INDEX_NONE)
+        {
+            break;
+        }
+        int32 End = Text.Find(TEXT("}}"), ESearchCase::CaseSensitive, ESearchDir::FromStart, Start + 2);
+        if (End == INDEX_NONE)
+        {
+            break;
+        }
+
+        FString TokenString = Text.Mid(Start + 2, End - Start - 2).TrimStartAndEnd();
+        TArray<FString> Parts;
+        TokenString.ParseIntoArray(Parts, TEXT("."));
+        if (Parts.Num() == 3 && Parts[0] == Table)
+        {
+            FString& TargetPart = bIsRow ? Parts[1] : Parts[2];
+            if (TargetPart == OldVal)
+            {
+                TargetPart = NewVal;
+                FString NewToken = FString::Printf(TEXT("{{ %s.%s.%s }}"), *Parts[0], *Parts[1], *Parts[2]);
+                Text = Text.Left(Start) + NewToken + Text.Mid(End + 2);
+                Pos = Start + NewToken.Len();
+                continue;
+            }
+        }
+
+        Pos = End + 2;
     }
-    return true;
+}
+
+void FRefBakeService::RetargetRow(FString& Text, const FString& Table, const FString& OldName, const FString& NewName)
+{
+    RetargetToken(Text, Table, OldName, NewName, true);
+}
+
+void FRefBakeService::RetargetColumn(FString& Text, const FString& Table, const FString& OldName, const FString& NewName)
+{
+    RetargetToken(Text, Table, OldName, NewName, false);
 }
 
