@@ -45,14 +45,14 @@ public:
         {
             if (UDataTable* Master = Settings->MasterReferenceTable.LoadSynchronous())
             {
-                Master->ForeachRow<FMasterRefRow>(TEXT("StartupMirrors"), [](const FMasterRefRow& Row)
+                Master->ForeachRow<FMasterRefRow>(TEXT("StartupMirrors"), [](const FName&, const FMasterRefRow& Row)
                 {
                     BakeService::EnsureMirrors(Row);
                 });
 
                 Master->OnDataTableChanged().AddLambda([Master](UDataTable*)
                 {
-                    Master->ForeachRow<FMasterRefRow>(TEXT("ChangedMirrors"), [](const FMasterRefRow& Row)
+                    Master->ForeachRow<FMasterRefRow>(TEXT("ChangedMirrors"), [](const FName&, const FMasterRefRow& Row)
                     {
                         BakeService::EnsureMirrors(Row);
                     });
@@ -105,8 +105,8 @@ private:
     TWeakPtr<SRefTextEditor> EditorWeak;
 
     TSharedRef<SRefTextEditor> Editor = SNew(SRefTextEditor)
-        .HScrollBar(HScrollBar)
-        .VScrollBar(VScrollBar)
+        .ExternalHScrollBar(HScrollBar)
+        .ExternalVScrollBar(VScrollBar)
         .OnTextChanged_Lambda([
             &Preview,
             &MasterPreview,
