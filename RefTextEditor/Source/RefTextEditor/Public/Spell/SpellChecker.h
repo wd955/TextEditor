@@ -10,4 +10,4 @@ struct IRefSpellChecker : public TSharedFromThis<IRefSpellChecker>
     virtual void Suggest(const FString& Word, TArray<FString>& OutSuggestions) = 0;
 };
 
-TSharedPtr<IRefSpellChecker> CreateSpellChecker();
+TSharedPtr<IRefSpellChecker> CreateSpellChecker(const FString& Language);

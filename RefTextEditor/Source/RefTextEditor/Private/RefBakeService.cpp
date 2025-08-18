@@ -34,15 +34,23 @@ void FRefBakeService::EnsureMirrors(const FMasterRefRow& Ref)
         return;
     }
 
+    const URefTextEditorSettings* Settings = URefTextEditorSettings::Get();
+    const FString HardRoot = Settings ? Settings->HardRoot.Path : FString();
+
     // Ensure the hard table resides in the intended hard directory if one was provided
+    const FString HardTablePath = Ref.HardTable->GetOutermost()->GetName();
     if (!Ref.HardFolderOverride.Path.IsEmpty())
     {
-        const FString HardTablePath = Ref.HardTable->GetOutermost()->GetName();
         if (!HardTablePath.StartsWith(Ref.HardFolderOverride.Path))
         {
             UE_LOG(LogTemp, Warning, TEXT("Hard table %s is outside designated folder %s"), *HardTablePath, *Ref.HardFolderOverride.Path);
             return;
         }
+    }
+    else if (!HardRoot.IsEmpty() && !HardTablePath.StartsWith(HardRoot))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Hard table %s is outside hard root %s"), *HardTablePath, *HardRoot);
+        return;
     }
 
     UScriptStruct* RowStruct = Ref.HardTable->GetRowStruct();
@@ -51,7 +59,7 @@ void FRefBakeService::EnsureMirrors(const FMasterRefRow& Ref)
         return;
     }
 
-    const FString SoftRoot = TEXT("/Game/Editor/Text");
+    const FString SoftRoot = Settings ? Settings->SoftRoot.Path : TEXT("/Game/Editor/Text");
     FString TargetFolder = Ref.SoftFolderOverride.Path;
     if (TargetFolder.IsEmpty() || !TargetFolder.StartsWith(SoftRoot))
     {
@@ -92,16 +100,23 @@ void FRefBakeService::SyncEntry(const FMasterRefRow& Ref, const FString& Entry)
     // Ensure soft mirrors are available before syncing
     EnsureMirrors(Ref);
 
-    const int32 Bytes = MeasureBytesUtf8(Entry);
-    if (Ref.ByteLimitPerCell > 0 && Bytes > Ref.ByteLimitPerCell)
+    const URefTextEditorSettings* Settings = URefTextEditorSettings::Get();
+    int32 Limit = Ref.ByteLimitPerCell;
+    if (Limit <= 0 && Settings)
     {
-        // Entry exceeds the limit, convert it into external assets
-        ConvertEntryToAssets(Entry);
+        Limit = Settings->ByteLimitPerCell;
+    }
 
-        // After conversion, update mirror tables so they point to the new asset
-        if (Ref.HardTable)
+    const int32 Bytes = MeasureBytesUtf8(Entry);
+    if (Limit > 0 && Bytes > Limit)
+    {
+        if (Settings && Settings->OverflowPolicy == EOverflowPolicy::ConvertToAssets)
         {
-            SyncTable(Ref.HardTable);
+            ConvertEntryToAssets(Entry);
+            if (Ref.HardTable)
+            {
+                SyncTable(Ref.HardTable);
+            }
         }
         return;
     }

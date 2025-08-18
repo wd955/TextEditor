@@ -6,8 +6,6 @@
 #include "Framework/Application/SlateApplication.h"
 #include "IBakeService.h"
 #include "RefTextEditorSettings.h"
-#include "MasterReferenceTable.h"
-#include "Engine/DataTable.h"
 
 void SRefMasterTablePreview::Construct(const FArguments& InArgs)
 {
@@ -35,16 +33,8 @@ void SRefMasterTablePreview::SetText(const FString& InText)
     ByteLimit = 0;
     if (const URefTextEditorSettings* Settings = URefTextEditorSettings::Get())
     {
-        if (UDataTable* Master = Settings->MasterReferenceTable)
-        {
-            TArray<FMasterRefRow*> Rows;
-            Master->GetAllRows<FMasterRefRow>(TEXT("PreviewLimits"), Rows);
-            if (Rows.Num() > 0)
-            {
-                ByteLimit = Rows[0]->ByteLimitPerCell;
-                WarnThreshold = Rows[0]->WarnThreshold;
-            }
-        }
+        ByteLimit = Settings->ByteLimitPerCell;
+        WarnThreshold = Settings->WarnThreshold;
     }
     if (ListView.IsValid())
     {

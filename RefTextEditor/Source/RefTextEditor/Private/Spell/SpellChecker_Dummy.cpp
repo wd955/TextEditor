@@ -9,7 +9,7 @@ public:
     virtual void Suggest(const FString&, TArray<FString>&) override {}
 };
 
-TSharedPtr<IRefSpellChecker> CreateSpellChecker()
+TSharedPtr<IRefSpellChecker> CreateSpellChecker(const FString&)
 {
     return MakeShared<FDummySpellChecker>();
 }
