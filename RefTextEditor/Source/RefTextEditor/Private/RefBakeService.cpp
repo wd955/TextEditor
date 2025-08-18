@@ -74,14 +74,36 @@ void FRefBakeService::EnsureMirrors(const FMasterRefRow& Ref)
 
 void FRefBakeService::SyncEntry(const FMasterRefRow& Ref, const FString& Entry)
 {
-    // Basic implementation ensures mirror table exists and could be extended
+    // Ensure soft mirrors are available before syncing
     EnsureMirrors(Ref);
-    // Additional synchronization logic would go here
+
+    const int32 Bytes = MeasureBytesUtf8(Entry);
+    if (Ref.ByteLimitPerCell > 0 && Bytes > Ref.ByteLimitPerCell)
+    {
+        // Entry exceeds the limit, convert it into external assets
+        ConvertEntryToAssets(Entry);
+
+        // After conversion, update mirror tables so they point to the new asset
+        if (Ref.HardTable)
+        {
+            SyncTable(Ref.HardTable);
+        }
+        return;
+    }
+
+    // Additional synchronization logic would go here for entries within limits
 }
 
 void FRefBakeService::ConvertEntryToAssets(const FString& In)
 {
-    // Stub implementation for converting entries to assets
+    // Simple placeholder asset creation. In a full implementation this would
+    // generate assets on disk and replace table text with references.
+    const FString AssetName = FString::Printf(TEXT("RefText_%s"), *FGuid::NewGuid().ToString());
+    const FString PackagePath = TEXT("/Game/RefText/Generated/") + AssetName;
+    UPackage* Package = CreatePackage(*PackagePath);
+    UObject* Asset = NewObject<UObject>(Package, *AssetName, RF_Public | RF_Standalone);
+    FAssetRegistryModule::AssetCreated(Asset);
+    Package->MarkPackageDirty();
 }
 
 void FRefBakeService::SyncTable(UDataTable* Table)

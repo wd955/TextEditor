@@ -102,6 +102,7 @@ private:
     TSharedPtr<SRefTextPreview> Preview;
     TSharedPtr<SRefMasterTablePreview> MasterPreview;
     TSharedPtr<STextBlock> SizeText;
+    TWeakPtr<SRefTextEditor> EditorWeak;
 
     TSharedRef<SRefTextEditor> Editor = SNew(SRefTextEditor)
         .HScrollBar(HScrollBar)
@@ -109,7 +110,8 @@ private:
         .OnTextChanged_Lambda([
             &Preview,
             &MasterPreview,
-            &SizeText](const FText& NewText)
+            &SizeText,
+            &EditorWeak](const FText& NewText)
         {
             const FString Baked = BakeService::BakeText(NewText.ToString());
             if (Preview.IsValid())
@@ -123,22 +125,52 @@ private:
             if (SizeText.IsValid())
             {
                 const int32 Bytes = BakeService::MeasureBytesUtf8(Baked);
-                const int32 Limit = 64 * 1024;
+
+                int32 Limit = 0;
+                int32 Warn = 0;
+                if (const URefTextEditorSettings* Settings = URefTextEditorSettings::Get())
+                {
+                    if (UDataTable* Master = Settings->MasterReferenceTable)
+                    {
+                        TArray<FMasterRefRow*> Rows;
+                        Master->GetAllRows<FMasterRefRow>(TEXT("SizeLimits"), Rows);
+                        if (Rows.Num() > 0)
+                        {
+                            Limit = Rows[0]->ByteLimitPerCell;
+                            Warn = Rows[0]->WarnThreshold;
+                        }
+                    }
+                }
+                if (Limit <= 0)
+                {
+                    Limit = 64 * 1024;
+                }
+                if (Warn <= 0)
+                {
+                    Warn = Limit * 3 / 4;
+                }
+
                 FString Error;
                 const bool bValid = BakeService::Validate(Baked, Limit, &Error);
                 FLinearColor Color = FLinearColor::White;
-                if (!bValid || Bytes > 60 * 1024)
+                if (!bValid || Bytes > Limit)
                 {
                     Color = FLinearColor::Red;
+                    if (TSharedPtr<SRefTextEditor> Pinned = EditorWeak.Pin())
+                    {
+                        BakeService::ConvertEntryToAssets(Pinned->GetText());
+                    }
                 }
-                else if (Bytes > 48 * 1024)
+                else if (Bytes > Warn)
                 {
                     Color = FLinearColor::Yellow;
                 }
                 SizeText->SetColorAndOpacity(Color);
-                SizeText->SetText(FText::FromString(FString::Printf(TEXT("Size: %.1f KB / 64 KB"), Bytes / 1024.f)));
+                SizeText->SetText(FText::FromString(FString::Printf(TEXT("Size: %.1f KB / %.1f KB"), Bytes / 1024.f, Limit / 1024.f)));
             }
         });
+
+    EditorWeak = Editor;
 
     SAssignNew(Preview, SRefTextPreview)
         .ExternalHScrollBar(HScrollBar)
