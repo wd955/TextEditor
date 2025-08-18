@@ -3,7 +3,7 @@
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Framework/Application/SlateApplication.h"
-#include "BakeService.h"
+#include "IBakeService.h"
 
 namespace
 {
