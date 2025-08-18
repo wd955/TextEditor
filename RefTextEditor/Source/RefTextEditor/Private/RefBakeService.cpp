@@ -31,16 +31,28 @@ void FRefBakeService::EnsureMirrors(const FMasterRefRow& Ref)
         return;
     }
 
+    // Ensure the hard table resides in the intended hard directory if one was provided
+    if (!Ref.HardFolderOverride.Path.IsEmpty())
+    {
+        const FString HardTablePath = Ref.HardTable->GetOutermost()->GetName();
+        if (!HardTablePath.StartsWith(Ref.HardFolderOverride.Path))
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Hard table %s is outside designated folder %s"), *HardTablePath, *Ref.HardFolderOverride.Path);
+            return;
+        }
+    }
+
     UScriptStruct* RowStruct = Ref.HardTable->GetRowStruct();
     if (!RowStruct)
     {
         return;
     }
 
+    const FString SoftRoot = TEXT("/Game/Editor/Text");
     FString TargetFolder = Ref.SoftFolderOverride.Path;
-    if (TargetFolder.IsEmpty())
+    if (TargetFolder.IsEmpty() || !TargetFolder.StartsWith(SoftRoot))
     {
-        TargetFolder = TEXT("/Game/RefText/Mirrors");
+        TargetFolder = SoftRoot;
     }
 
     const FString SoftName = Ref.HardTable->GetName() + TEXT("_Soft");
