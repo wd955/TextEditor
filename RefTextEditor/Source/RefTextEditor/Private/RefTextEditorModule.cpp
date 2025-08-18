@@ -3,6 +3,8 @@
 #include "SRefTextEditor.h"
 #include "SRefMasterTablePreview.h"
 #include "SRefTextPreview.h"
+#include "RefTextEditorSettings.h"
+#include "MasterReferenceTable.h"
 #include "Modules/ModuleManager.h"
 #include "ToolMenus.h"
 #include "Widgets/Docking/SDockTab.h"
@@ -34,6 +36,26 @@ public:
         // Add Window menu entry
         UToolMenus::RegisterStartupCallback(
             FSimpleMulticastDelegate::FDelegate::CreateRaw(this, &FRefTextEditorModule::RegisterMenus));
+
+        // Mirror hard tables into soft copies on startup
+        if (const URefTextEditorSettings* Settings = URefTextEditorSettings::Get())
+        {
+            if (UDataTable* Master = Settings->MasterReferenceTable)
+            {
+                Master->ForeachRow<FMasterRefRow>(TEXT("StartupMirrors"), [](const FMasterRefRow& Row)
+                {
+                    BakeService::EnsureMirrors(Row);
+                });
+
+                Master->OnDataTableChanged().AddLambda([Master](UDataTable*)
+                {
+                    Master->ForeachRow<FMasterRefRow>(TEXT("ChangedMirrors"), [](const FMasterRefRow& Row)
+                    {
+                        BakeService::EnsureMirrors(Row);
+                    });
+                });
+            }
+        }
     }
 
     virtual void ShutdownModule() override
