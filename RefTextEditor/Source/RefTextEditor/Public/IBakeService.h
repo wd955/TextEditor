@@ -37,6 +37,12 @@ public:
     /** Validate the supplied text against limits. */
     virtual bool Validate(const FString& In, int32 LimitBytes, FString* OutError) const = 0;
 
+    /** Retarget tokens if a row has been renamed. */
+    virtual void RetargetRow(FString& Text, const FString& Table, const FString& OldName, const FString& NewName) = 0;
+
+    /** Retarget tokens if a column has been renamed. */
+    virtual void RetargetColumn(FString& Text, const FString& Table, const FString& OldName, const FString& NewName) = 0;
+
     /** Access the currently registered bake service implementation. */
     static IBakeService& Get();
 };
@@ -51,5 +57,13 @@ namespace BakeService
     inline void ConvertEntryToAssets(const FString& In) { IBakeService::Get().ConvertEntryToAssets(In); }
     inline void SyncTable(UDataTable* Table) { IBakeService::Get().SyncTable(Table); }
     inline bool Validate(const FString& In, int32 LimitBytes, FString* OutError = nullptr) { return IBakeService::Get().Validate(In, LimitBytes, OutError); }
+    inline void RetargetRow(FString& Text, const FString& Table, const FString& OldName, const FString& NewName)
+    {
+        IBakeService::Get().RetargetRow(Text, Table, OldName, NewName);
+    }
+    inline void RetargetColumn(FString& Text, const FString& Table, const FString& OldName, const FString& NewName)
+    {
+        IBakeService::Get().RetargetColumn(Text, Table, OldName, NewName);
+    }
 }
 

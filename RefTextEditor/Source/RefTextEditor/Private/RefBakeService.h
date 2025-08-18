@@ -13,5 +13,7 @@ public:
     virtual void ConvertEntryToAssets(const FString& In) override;
     virtual void SyncTable(UDataTable* Table) override;
     virtual bool Validate(const FString& In, int32 LimitBytes, FString* OutError) const override;
+    virtual void RetargetRow(FString& Text, const FString& Table, const FString& OldName, const FString& NewName) override;
+    virtual void RetargetColumn(FString& Text, const FString& Table, const FString& OldName, const FString& NewName) override;
 };
 
