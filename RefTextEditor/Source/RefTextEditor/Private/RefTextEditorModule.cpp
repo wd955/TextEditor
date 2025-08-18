@@ -5,6 +5,7 @@
 #include "SRefTextPreview.h"
 #include "RefTextEditorSettings.h"
 #include "MasterReferenceTable.h"
+#include "Features/IModularFeatures.h"
 #include "Modules/ModuleManager.h"
 #include "ToolMenus.h"
 #include "Widgets/Docking/SDockTab.h"
@@ -16,7 +17,7 @@
 #include "Widgets/Layout/SScrollBar.h"
 #include "Templates/SharedPointer.h"
 #include "Framework/Application/SlateApplication.h"
-#include "BakeService.h"
+#include "IBakeService.h"
 
 static const FName RefTextTabName("RefTextEditor");
 
@@ -25,6 +26,8 @@ class FRefTextEditorModule : public IModuleInterface
 public:
     virtual void StartupModule() override
     {
+        // Register bake service as a modular feature so other modules can access it
+        IModularFeatures::Get().RegisterModularFeature(IBakeService::FeatureName, &IBakeService::Get());
         // Register dockable tab
         FGlobalTabmanager::Get()->RegisterNomadTabSpawner(
             RefTextTabName,
@@ -60,6 +63,8 @@ public:
 
     virtual void ShutdownModule() override
     {
+        // Unregister modular feature on shutdown
+        IModularFeatures::Get().UnregisterModularFeature(IBakeService::FeatureName, &IBakeService::Get());
         UToolMenus::UnRegisterStartupCallback(this);
         UToolMenus::UnregisterOwner(this);
 
@@ -119,8 +124,10 @@ private:
             {
                 const int32 Bytes = BakeService::MeasureBytesUtf8(Baked);
                 const int32 Limit = 64 * 1024;
+                FString Error;
+                const bool bValid = BakeService::Validate(Baked, Limit, &Error);
                 FLinearColor Color = FLinearColor::White;
-                if (Bytes > 60 * 1024)
+                if (!bValid || Bytes > 60 * 1024)
                 {
                     Color = FLinearColor::Red;
                 }
