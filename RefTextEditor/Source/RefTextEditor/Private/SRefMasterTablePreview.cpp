@@ -4,13 +4,9 @@
 #include "Widgets/Layout/SScrollBox.h"
 #include "Framework/Application/SlateApplication.h"
 #include "IBakeService.h"
-
-namespace
-{
-    // Thresholds for size warnings in bytes
-    constexpr int32 YellowThreshold = 48;
-    constexpr int32 RedThreshold = 60;
-}
+#include "RefTextEditorSettings.h"
+#include "MasterReferenceTable.h"
+#include "Engine/DataTable.h"
 
 void SRefMasterTablePreview::Construct(const FArguments& InArgs)
 {
@@ -34,6 +30,21 @@ void SRefMasterTablePreview::SetText(const FString& InText)
     {
         Lines.Add(MakeShared<FString>(MoveTemp(L)));
     }
+    WarnThreshold = 0;
+    ByteLimit = 0;
+    if (const URefTextEditorSettings* Settings = URefTextEditorSettings::Get())
+    {
+        if (UDataTable* Master = Settings->MasterReferenceTable)
+        {
+            TArray<FMasterRefRow*> Rows;
+            Master->GetAllRows<FMasterRefRow>(TEXT("PreviewLimits"), Rows);
+            if (Rows.Num() > 0)
+            {
+                ByteLimit = Rows[0]->ByteLimitPerCell;
+                WarnThreshold = Rows[0]->WarnThreshold;
+            }
+        }
+    }
     if (ListView.IsValid())
     {
         ListView->RequestListRefresh();
@@ -45,11 +56,13 @@ TSharedRef<ITableRow> SRefMasterTablePreview::OnGenerateRow(TSharedPtr<FString> 
     int32 Bytes = BakeService::MeasureBytesUtf8(*Item);
 
     FLinearColor Color = FLinearColor::Gray;
-    if (Bytes > RedThreshold)
+    const int32 Limit = ByteLimit > 0 ? ByteLimit : 60;
+    const int32 Warn = WarnThreshold > 0 ? WarnThreshold : 48;
+    if (Bytes > Limit)
     {
         Color = FLinearColor::Red;
     }
-    else if (Bytes > YellowThreshold)
+    else if (Bytes > Warn)
     {
         Color = FLinearColor::Yellow;
     }

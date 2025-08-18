@@ -26,5 +26,7 @@ private:
     TArray<TSharedPtr<FString>> Lines;
     TSharedPtr<class SListView<TSharedPtr<FString>>> ListView;
     FOnRowSelected OnRowSelected;
+    int32 WarnThreshold = 0;
+    int32 ByteLimit = 0;
 };
 
