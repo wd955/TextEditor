@@ -1,0 +1,10 @@
+{
+    "Example": {
+        "HardTable": "/Game/Example/ExampleTable.ExampleTable",
+        "SoftFolderOverride": { "Path": "/Game/Soft" },
+        "HardFolderOverride": { "Path": "/Game/Hard" },
+        "bIncludeInLeftPanel": true,
+        "ByteLimitPerCell": 2048,
+        "WarnThreshold": 1024
+    }
+}
