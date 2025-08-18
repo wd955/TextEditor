@@ -50,7 +50,7 @@ public:
                     BakeService::EnsureMirrors(Row);
                 });
 
-                Master->OnDataTableChanged().AddLambda([Master](UDataTable*)
+                Master->OnDataTableChanged().AddLambda([Master]()
                 {
                     Master->ForeachRow<FMasterRefRow>(TEXT("ChangedMirrors"), [](const FName&, const FMasterRefRow& Row)
                     {

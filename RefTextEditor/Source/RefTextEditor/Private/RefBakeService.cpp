@@ -143,7 +143,7 @@ void FRefBakeService::SyncTable(UDataTable* Table)
         return;
     }
 
-    Table->ForeachRow<FTableRowBase>(TEXT("RefBakeSync"), [&](const FName& /*RowName*/, FTableRowBase& Row)
+    Table->ForeachRow<FTableRowBase>(TEXT("RefBakeSync"), [&](const FName& /*RowName*/, const FTableRowBase& Row)
     {
         // Stub: each row could be processed/baked here
     });
