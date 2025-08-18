@@ -5,6 +5,7 @@
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Layout/SBorder.h"
+#include "Widgets/Layout/SScrollBar.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Framework/Text/TextLayout.h"
@@ -78,6 +79,8 @@ void SRefTextEditor::Construct(const FArguments& InArgs)
                                                                 .AlwaysShowScrollbars(true)
                                                                 .AutoWrapText(true)
                                                                 .HintText(FText::FromString(TEXT("Type here…")))
+                                                                .HScrollBar(InArgs._ExternalHScrollBar)
+                                                                .VScrollBar(InArgs._ExternalVScrollBar)
                                                                 .OnTextChanged_Lambda([this](const FText& NewText)
                                                                         {
                                                                                 OnTextChanged.ExecuteIfBound(NewText);

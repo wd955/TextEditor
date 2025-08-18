@@ -5,13 +5,19 @@
 #include "Framework/Text/TextLayout.h"
 #include "Widgets/Text/SlateEditableTextTypes.h"
 
+class SScrollBar;
+
 class SRefTextEditor : public SCompoundWidget
 {
 public:
         SLATE_BEGIN_ARGS(SRefTextEditor)
                 : _OnTextChanged()
+                , _ExternalHScrollBar(nullptr)
+                , _ExternalVScrollBar(nullptr)
         {}
                 SLATE_EVENT(FOnTextChanged, OnTextChanged)
+                SLATE_ARGUMENT(TSharedPtr<SScrollBar>, ExternalHScrollBar)
+                SLATE_ARGUMENT(TSharedPtr<SScrollBar>, ExternalVScrollBar)
         SLATE_END_ARGS()
 
         void Construct(const FArguments& InArgs);
