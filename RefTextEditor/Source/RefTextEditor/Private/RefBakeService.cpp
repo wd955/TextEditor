@@ -152,7 +152,7 @@ void FRefBakeService::SyncTable(UDataTable* Table)
 bool FRefBakeService::Validate(const FString& In, int32 LimitBytes, FString* OutError) const
 {
     const URefTextEditorSettings* Settings = URefTextEditorSettings::Get();
-    UDataTable* Master = Settings ? Settings->MasterReferenceTable : nullptr;
+    UDataTable* Master = Settings ? Settings->MasterReferenceTable.LoadSynchronous() : nullptr;
 
     TSet<FString> Visiting;
 

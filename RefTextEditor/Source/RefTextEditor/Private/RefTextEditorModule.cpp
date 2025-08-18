@@ -43,7 +43,7 @@ public:
         // Mirror hard tables into soft copies on startup
         if (const URefTextEditorSettings* Settings = URefTextEditorSettings::Get())
         {
-            if (UDataTable* Master = Settings->MasterReferenceTable)
+            if (UDataTable* Master = Settings->MasterReferenceTable.LoadSynchronous())
             {
                 Master->ForeachRow<FMasterRefRow>(TEXT("StartupMirrors"), [](const FMasterRefRow& Row)
                 {

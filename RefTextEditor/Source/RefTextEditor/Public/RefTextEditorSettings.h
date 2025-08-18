@@ -30,7 +30,7 @@ public:
 
         // Data table containing master reference information
         UPROPERTY(EditAnywhere, Config, Category = "Master Reference")
-        TObjectPtr<UDataTable> MasterReferenceTable = nullptr;
+        TSoftObjectPtr<UDataTable> MasterReferenceTable = nullptr;
 
         // Root folder for generated soft assets
         UPROPERTY(EditAnywhere, Config, Category = "Paths")
