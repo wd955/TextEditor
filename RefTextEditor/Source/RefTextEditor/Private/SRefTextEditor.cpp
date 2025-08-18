@@ -317,7 +317,8 @@ void SRefTextEditor::RunSpellScan()
         const FString Text = GetText();
         if (!Text.IsEmpty())
         {
-                TSharedPtr<IRefSpellChecker> SC = CreateSpellChecker();
+                const URefTextEditorSettings* Settings = URefTextEditorSettings::Get();
+                TSharedPtr<IRefSpellChecker> SC = CreateSpellChecker(Settings ? Settings->DefaultLanguage : FString());
                 auto IsWord = [](TCHAR C) { return FChar::IsAlpha(C) || C == '\'' || C == '-'; };
 
 		int32 i = 0, N = Text.Len();
@@ -428,7 +429,8 @@ TSharedPtr<SWidget> SRefTextEditor::OnContextMenuOpening()
 
         FMenuBuilder Menu(true, nullptr);
 
-        TSharedPtr<IRefSpellChecker> SC = CreateSpellChecker();
+        const URefTextEditorSettings* Settings = URefTextEditorSettings::Get();
+        TSharedPtr<IRefSpellChecker> SC = CreateSpellChecker(Settings ? Settings->DefaultLanguage : FString());
         if (SC.IsValid())
         {
                 TArray<FString> Suggestions;

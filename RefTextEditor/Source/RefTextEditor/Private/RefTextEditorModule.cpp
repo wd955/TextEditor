@@ -128,18 +128,12 @@ private:
 
                 int32 Limit = 0;
                 int32 Warn = 0;
+                EOverflowPolicy Policy = EOverflowPolicy::ConvertToAssets;
                 if (const URefTextEditorSettings* Settings = URefTextEditorSettings::Get())
                 {
-                    if (UDataTable* Master = Settings->MasterReferenceTable)
-                    {
-                        TArray<FMasterRefRow*> Rows;
-                        Master->GetAllRows<FMasterRefRow>(TEXT("SizeLimits"), Rows);
-                        if (Rows.Num() > 0)
-                        {
-                            Limit = Rows[0]->ByteLimitPerCell;
-                            Warn = Rows[0]->WarnThreshold;
-                        }
-                    }
+                    Limit = Settings->ByteLimitPerCell;
+                    Warn = Settings->WarnThreshold;
+                    Policy = Settings->OverflowPolicy;
                 }
                 if (Limit <= 0)
                 {
@@ -156,9 +150,12 @@ private:
                 if (!bValid || Bytes > Limit)
                 {
                     Color = FLinearColor::Red;
-                    if (TSharedPtr<SRefTextEditor> Pinned = EditorWeak.Pin())
+                    if (Policy == EOverflowPolicy::ConvertToAssets)
                     {
-                        BakeService::ConvertEntryToAssets(Pinned->GetText());
+                        if (TSharedPtr<SRefTextEditor> Pinned = EditorWeak.Pin())
+                        {
+                            BakeService::ConvertEntryToAssets(Pinned->GetText());
+                        }
                     }
                 }
                 else if (Bytes > Warn)

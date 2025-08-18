@@ -27,7 +27,7 @@ static BSTR MakeBSTR(const FString& In)
 class FWinSpellChecker : public IRefSpellChecker
 {
 public:
-    FWinSpellChecker()
+    FWinSpellChecker(const FString& InLanguage)
     {
         // Initialize COM STA once for this module
         CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
@@ -37,8 +37,8 @@ public:
                                       IID_PPV_ARGS(&Factory));
         if (SUCCEEDED(hr) && Factory)
         {
-            // Try user default first; if that fails, fall back to en-US
-            hr = Factory->CreateSpellChecker(nullptr, &Checker);
+            const wchar_t* Lang = InLanguage.IsEmpty() ? nullptr : *InLanguage;
+            hr = Factory->CreateSpellChecker(Lang, &Checker);
             if (FAILED(hr) || !Checker)
             {
                 Factory->CreateSpellChecker(L"en-US", &Checker);
@@ -102,9 +102,9 @@ private:
     ComPtr<::ISpellChecker> Checker;
 };
 
-TSharedPtr<IRefSpellChecker> CreateSpellChecker()
+TSharedPtr<IRefSpellChecker> CreateSpellChecker(const FString& Language)
 {
-    return MakeShared<FWinSpellChecker>();
+    return MakeShared<FWinSpellChecker>(Language);
 }
 
 #endif // REFTEXT_WINDOWS_SPELL
