@@ -2,6 +2,7 @@
 
 #include "SRefTextEditor.h"
 #include "SRefMasterTablePreview.h"
+#include "SRefTextPreview.h"
 #include "Modules/ModuleManager.h"
 #include "ToolMenus.h"
 #include "Widgets/Docking/SDockTab.h"
@@ -9,9 +10,11 @@
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
-#include "Widgets/Input/SMultiLineEditableTextBox.h"
+#include "Widgets/Input/SButton.h"
+#include "Widgets/Layout/SScrollBar.h"
 #include "Templates/SharedPointer.h"
 #include "Framework/Application/SlateApplication.h"
+#include "BakeService.h"
 
 static const FName RefTextTabName("RefTextEditor");
 
@@ -66,35 +69,60 @@ private:
 
     TSharedRef<SDockTab> SpawnTab(const FSpawnTabArgs&)
     {
-        TSharedRef<SMultiLineEditableTextBox> PreviewBox = SNew(SMultiLineEditableTextBox)
-            .IsReadOnly(true)
-            .AlwaysShowScrollbars(true)
-            .AutoWrapText(true);
+    TSharedRef<SScrollBar> HScrollBar = SNew(SScrollBar).Orientation(Orient_Horizontal);
+    TSharedRef<SScrollBar> VScrollBar = SNew(SScrollBar).Orientation(Orient_Vertical);
 
-        TSharedPtr<SRefMasterTablePreview> MasterPreview;
-        TSharedRef<SRefTextEditor> Editor = SNew(SRefTextEditor)
-            .OnTextChanged_Lambda([
-                PreviewBoxWeak = TWeakPtr<SMultiLineEditableTextBox>(PreviewBox),
-                &MasterPreview](const FText& NewText)
-            {
-                if (TSharedPtr<SMultiLineEditableTextBox> Pinned = PreviewBoxWeak.Pin())
-                {
-                    Pinned->SetText(NewText);
-                }
-                if (MasterPreview.IsValid())
-                {
-                    MasterPreview->SetText(NewText.ToString());
-                }
-            });
+    TSharedPtr<SRefTextPreview> Preview;
+    TSharedPtr<SRefMasterTablePreview> MasterPreview;
+    TSharedPtr<STextBlock> SizeText;
 
-        SAssignNew(MasterPreview, SRefMasterTablePreview)
-            .OnRowSelected_Lambda([EditorWeak = TWeakPtr<SRefTextEditor>(Editor)](int32)
+    TSharedRef<SRefTextEditor> Editor = SNew(SRefTextEditor)
+        .HScrollBar(HScrollBar)
+        .VScrollBar(VScrollBar)
+        .OnTextChanged_Lambda([
+            &Preview,
+            &MasterPreview,
+            &SizeText](const FText& NewText)
+        {
+            const FString Baked = BakeService::BakeText(NewText.ToString());
+            if (Preview.IsValid())
             {
-                if (TSharedPtr<SRefTextEditor> PinnedEditor = EditorWeak.Pin())
+                Preview->SetText(Baked);
+            }
+            if (MasterPreview.IsValid())
+            {
+                MasterPreview->SetText(NewText.ToString());
+            }
+            if (SizeText.IsValid())
+            {
+                const int32 Bytes = BakeService::MeasureBytesUtf8(Baked);
+                const int32 Limit = 64 * 1024;
+                FLinearColor Color = FLinearColor::White;
+                if (Bytes > 60 * 1024)
                 {
-                    FSlateApplication::Get().SetKeyboardFocus(PinnedEditor);
+                    Color = FLinearColor::Red;
                 }
-            });
+                else if (Bytes > 48 * 1024)
+                {
+                    Color = FLinearColor::Yellow;
+                }
+                SizeText->SetColorAndOpacity(Color);
+                SizeText->SetText(FText::FromString(FString::Printf(TEXT("Size: %.1f KB / 64 KB"), Bytes / 1024.f)));
+            }
+        });
+
+    SAssignNew(Preview, SRefTextPreview)
+        .ExternalHScrollBar(HScrollBar)
+        .ExternalVScrollBar(VScrollBar);
+
+    SAssignNew(MasterPreview, SRefMasterTablePreview)
+        .OnRowSelected_Lambda([EditorWeak = TWeakPtr<SRefTextEditor>(Editor)](int32)
+        {
+            if (TSharedPtr<SRefTextEditor> PinnedEditor = EditorWeak.Pin())
+            {
+                FSlateApplication::Get().SetKeyboardFocus(PinnedEditor);
+            }
+        });
 
         TSharedRef<SSplitter> Split =
             SNew(SSplitter)
@@ -119,14 +147,32 @@ private:
                 ]
                 + SVerticalBox::Slot().FillHeight(1.f)
                 [
-                    PreviewBox
+                    Preview.ToSharedRef()
                 ]
                 + SVerticalBox::Slot().AutoHeight()
                 [
                     SNew(SBorder)
                     .Padding(6.f)
                     [
-                        SNew(STextBlock).Text(NSLOCTEXT("RefText", "SizeBar", "Size: 0 KB / 64 KB"))
+                        SNew(SHorizontalBox)
+                        + SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)
+                        [
+                            SAssignNew(SizeText, STextBlock)
+                                .Text(NSLOCTEXT("RefText", "SizeBar", "Size: 0 KB / 64 KB"))
+                        ]
+                        + SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(8.f,0.f)
+                        [
+                            SNew(SButton)
+                                .Text(FText::FromString(TEXT("Convert to Asset")))
+                                .OnClicked_Lambda([EditorWeak = TWeakPtr<SRefTextEditor>(Editor)]()
+                                {
+                                    if (TSharedPtr<SRefTextEditor> PinnedEditor = EditorWeak.Pin())
+                                    {
+                                        BakeService::ConvertEntryToAssets(PinnedEditor->GetText());
+                                    }
+                                    return FReply::Handled();
+                                })
+                        ]
                     ]
                 ]
             ];
